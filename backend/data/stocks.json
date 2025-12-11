@@ -1,0 +1,186 @@
+[
+    {
+        "ticker": "RELIANCE",
+        "name": "Reliance Industries Limited"
+    },
+    {
+        "ticker": "TCS",
+        "name": "Tata Consultancy Services Limited"
+    },
+    {
+        "ticker": "HDFCBANK",
+        "name": "HDFC Bank Limited"
+    },
+    {
+        "ticker": "ICICIBANK",
+        "name": "ICICI Bank Limited"
+    },
+    {
+        "ticker": "INFY",
+        "name": "Infosys Limited"
+    },
+    {
+        "ticker": "BHARTIARTL",
+        "name": "Bharti Airtel Limited"
+    },
+    {
+        "ticker": "ITC",
+        "name": "ITC Limited"
+    },
+    {
+        "ticker": "SBIN",
+        "name": "State Bank of India"
+    },
+    {
+        "ticker": "LICI",
+        "name": "Life Insurance Corporation of India"
+    },
+    {
+        "ticker": "HINDUNILVR",
+        "name": "Hindustan Unilever Limited"
+    },
+    {
+        "ticker": "LT",
+        "name": "Larsen & Toubro Limited"
+    },
+    {
+        "ticker": "BAJFINANCE",
+        "name": "Bajaj Finance Limited"
+    },
+    {
+        "ticker": "HCLTECH",
+        "name": "HCL Technologies Limited"
+    },
+    {
+        "ticker": "MARUTI",
+        "name": "Maruti Suzuki India Limited"
+    },
+    {
+        "ticker": "SUNPHARMA",
+        "name": "Sun Pharmaceutical Industries Limited"
+    },
+    {
+        "ticker": "TATAMOTORS",
+        "name": "Tata Motors Limited"
+    },
+    {
+        "ticker": "ULTRACEMCO",
+        "name": "UltraTech Cement Limited"
+    },
+    {
+        "ticker": "TATASTEEL",
+        "name": "Tata Steel Limited"
+    },
+    {
+        "ticker": "NTPC",
+        "name": "NTPC Limited"
+    },
+    {
+        "ticker": "TITAN",
+        "name": "Titan Company Limited"
+    },
+    {
+        "ticker": "AXISBANK",
+        "name": "Axis Bank Limited"
+    },
+    {
+        "ticker": "ONGC",
+        "name": "Oil & Natural Gas Corporation Limited"
+    },
+    {
+        "ticker": "POWERGRID",
+        "name": "Power Grid Corporation of India Limited"
+    },
+    {
+        "ticker": "ADANIENT",
+        "name": "Adani Enterprises Limited"
+    },
+    {
+        "ticker": "M&M",
+        "name": "Mahindra & Mahindra Limited"
+    },
+    {
+        "ticker": "ADANIPORTS",
+        "name": "Adani Ports and Special Economic Zone Limited"
+    },
+    {
+        "ticker": "COALINDIA",
+        "name": "Coal India Limited"
+    },
+    {
+        "ticker": "ASIANPAINT",
+        "name": "Asian Paints Limited"
+    },
+    {
+        "ticker": "BAJAJFINSV",
+        "name": "Bajaj Finserv Limited"
+    },
+    {
+        "ticker": "JSWSTEEL",
+        "name": "JSW Steel Limited"
+    },
+    {
+        "ticker": "NESTLEIND",
+        "name": "Nestle India Limited"
+    },
+    {
+        "ticker": "GRASIM",
+        "name": "Grasim Industries Limited"
+    },
+    {
+        "ticker": "TECHM",
+        "name": "Tech Mahindra Limited"
+    },
+    {
+        "ticker": "WIPRO",
+        "name": "Wipro Limited"
+    },
+    {
+        "ticker": "CIPLA",
+        "name": "Cipla Limited"
+    },
+    {
+        "ticker": "TATACHEM",
+        "name": "Tata Chemicals Limited"
+    },
+    {
+        "ticker": "HAL",
+        "name": "Hindustan Aeronautics Limited"
+    },
+    {
+        "ticker": "BEL",
+        "name": "Bharat Electronics Limited"
+    },
+    {
+        "ticker": "BDL",
+        "name": "Bharat Dynamics Limited"
+    },
+    {
+        "ticker": "MDL",
+        "name": "Mazagon Dock Shipbuilders"
+    },
+    {
+        "ticker": "GRSE",
+        "name": "Garden Reach Shipbuilders"
+    },
+    {
+        "ticker": "BEML",
+        "name": "BEML Limited"
+    },
+    {
+        "ticker": "COCHINSHIP",
+        "name": "Cochin Shipyard Limited"
+    },
+    {
+        "ticker": "ZOMATO",
+        "name": "Zomato Limited"
+    },
+    {
+        "ticker": "PAYTM",
+        "name": "One97 Communications Limited"
+    },
+    {
+        "ticker": "NYKAA",
+        "name": "FSN E-Commerce Ventures Limited"
+    }
+]

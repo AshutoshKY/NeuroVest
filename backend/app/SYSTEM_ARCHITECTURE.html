@@ -1,0 +1,436 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>System Architecture</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid/dist/mermaid.min.js"></script>
+    <script>mermaid.initialize({startOnLoad:true});</script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 210mm;
+            margin: 0 auto;
+            padding: 20mm;
+            background: white;
+        }
+        @media print {
+            body {
+                padding: 0;
+                margin: 0;
+            }
+            @page {
+                size: A4;
+                margin: 20mm;
+            }
+        }
+        h1, h2, h3 { color: #2c3e50; }
+        h1 { border-bottom: 2px solid #eee; padding-bottom: 10px; }
+        h2 { border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 30px; }
+        code { background: #f8f9fa; padding: 2px 5px; border-radius: 3px; font-family: Consolas, monospace; }
+        pre { background: #f8f9fa; padding: 15px; border-radius: 5px; overflow-x: auto; border: 1px solid #e9ecef; }
+        table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+        .mermaid { margin: 20px 0; text-align: center; }
+    </style>
+</head>
+<body>
+    <h1>AI Market Analysis System - Technical Documentation</h1>
+<h2>1. Executive Summary</h2>
+<h3>1.1 Problem Statement</h3>
+<p>Retail investors often struggle to aggregate and analyze scattered financial information from multiple sources (news sites, RSS feeds, stock APIs). Manual analysis is time-consuming, prone to bias, and lacks real-time synthesis of qualitative (news sentiment) and quantitative (price data) factors.</p>
+<h3>1.2 Solution</h3>
+<p>The <strong>AI Market Analysis Assistant</strong> is a comprehensive platform that automates the collection, processing, and analysis of financial data. It combines <strong>Real-time Stock APIs</strong>, <strong>Intelligent Web Scraping</strong>, and <strong>Retrieval-Augmented Generation (RAG)</strong> to provide actionable, AI-driven investment insights with strict guardrails and transparent sourcing.</p>
+<hr />
+<h2>2. High-Level Architecture (HLD)</h2>
+<p>The system follows a microservices-based architecture containerized with Docker.</p>
+<div class="mermaid">graph TD
+    User[User / Streamlit UI] <-->|HTTP/JSON| Backend[FastAPI Backend]
+
+    subgraph &quot;Data Ingestion Layer&quot;
+        Backend -->|Async Calls| StockAPIs[Stock Data APIs]
+        Backend -->|Scrape| ScraperV2[News Scrapers V2]
+        ScraperV2 -->|RSS/Web| Sources[External News Sources]
+    end
+
+    subgraph &quot;Processing Layer&quot;
+        Backend -->|Clean/Chunk| Preprocessing[Preprocessing Service]
+        Backend -->|Embed| EmbedService[Embedding Service]
+        EmbedService -->|Vectorize| OpenAI[Azure OpenAI / Local]
+    end
+
+    subgraph &quot;Storage Layer&quot;
+        Backend -->|Read/Write| MySQL[(MySQL Database)]
+        EmbedService -->|Store/Query| Chroma[(ChromaDB Vector Store)]
+        Backend -->|Cache| AnalysisCache[Analysis Cache]
+    end
+
+    subgraph &quot;Analysis Layer&quot;
+        Backend -->|RAG| RAGService[RAG Service]
+        RAGService -->|Context| Chroma
+        RAGService -->|Generate| LLM[Azure OpenAI LLM]
+        Backend -->|Analyze| Sentiment[Sentiment Engine]
+    end
+</div>
+<hr />
+<h2>3. Core Components</h2>
+<h3>3.1 Data Ingestion (Scraper V2 &amp; APIs)</h3>
+<ul>
+<li><strong>Stock APIs</strong>: Async integration with multiple providers (Finnhub, Alpha Vantage, Yahoo Finance, Marketstack) with priority-based fallback.</li>
+<li><strong>News Scrapers (V2)</strong>: </li>
+<li><strong>DuckDuckGo News</strong>: Primary aggregator for broad coverage.</li>
+<li><strong>Google News RSS</strong>: Fallback for specific topics.</li>
+<li><strong>Architecture</strong>: Factory pattern (<code>ScraperFactory</code>) loads scrapers dynamically from <code>sources.yaml</code>.</li>
+<li><strong>Async Execution</strong>: Parallel fetching to minimize latency.</li>
+</ul>
+<h3>3.2 Processing &amp; Embeddings</h3>
+<ul>
+<li><strong>Preprocessing</strong>: Text cleaning, normalization, and chunking (recursive character splitter).</li>
+<li><strong>Embeddings</strong>: Hybrid approach supporting both <strong>Azure OpenAI</strong> (<code>text-embedding-3-small</code>) and <strong>Local</strong> (HuggingFace) models.</li>
+<li><strong>Vector DB</strong>: <strong>ChromaDB</strong> stores document embeddings with metadata (ticker, source, timestamp) for semantic retrieval.</li>
+</ul>
+<h3>3.3 RAG &amp; Analysis Engine</h3>
+<ul>
+<li><strong>RAG Service</strong>: Retrieves relevant news chunks from ChromaDB based on user query.</li>
+<li><strong>OpenAI Analysis</strong>: Uses <code>gpt-4</code> (or configured model) to synthesize retrieved context into structured insights.</li>
+<li><strong>Prompts</strong>: Context-aware prompts enforce role (Financial Analyst), output format (JSON), and strict rules (No financial advice).</li>
+<li><strong>Sentiment Analysis</strong>: Hybrid scoring using LLM-based classification (Bullish/Bearish/Neutral) with confidence weighting.</li>
+</ul>
+<h3>3.4 Guardrails</h3>
+<ul>
+<li><strong>Prompt Guardrails</strong>: System instructions preventing hallucination and enforcing objective tone.</li>
+<li><strong>Website Guardrails</strong>: <code>robots.txt</code> compliance and domain allow/block lists.</li>
+<li><strong>Sentiment Guardrails</strong>: Logic to prevent weak signals from overriding neutral majorities (e.g., requiring &gt;0.4 score to override &gt;50% neutral articles).</li>
+</ul>
+<h3>3.5 Caching System</h3>
+<ul>
+<li><strong>Analysis Cache</strong>: Stores full RAG analysis results for 1 hour.</li>
+<li><strong>Mechanism</strong>: Checks <code>analysis_cache</code> table before triggering new scrapes.</li>
+<li><strong>Benefits</strong>: Instant responses for repeated queries, reduced API costs.</li>
+</ul>
+<hr />
+<h2>4. Database Schema</h2>
+<h3>4.1 MySQL Schema (Relational Data)</h3>
+<h4><code>users</code></h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Integer</td>
+<td>Primary Key</td>
+</tr>
+<tr>
+<td>email</td>
+<td>String</td>
+<td>Unique User Email</td>
+</tr>
+<tr>
+<td>hashed_password</td>
+<td>String</td>
+<td>Auth Credential</td>
+</tr>
+<tr>
+<td>is_active</td>
+<td>Boolean</td>
+<td>Account Status</td>
+</tr>
+</tbody>
+</table>
+<h4><code>operation_logs</code></h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Integer</td>
+<td>Primary Key</td>
+</tr>
+<tr>
+<td>timestamp</td>
+<td>DateTime</td>
+<td>Event Time</td>
+</tr>
+<tr>
+<td>operation_type</td>
+<td>String</td>
+<td>scrape, api_call, analysis</td>
+</tr>
+<tr>
+<td>source</td>
+<td>String</td>
+<td>Source Name</td>
+</tr>
+<tr>
+<td>status</td>
+<td>String</td>
+<td>success, failure</td>
+</tr>
+<tr>
+<td>duration_ms</td>
+<td>Integer</td>
+<td>Performance Metric</td>
+</tr>
+</tbody>
+</table>
+<h4><code>data_source_status</code></h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Integer</td>
+<td>Primary Key</td>
+</tr>
+<tr>
+<td>source_name</td>
+<td>String</td>
+<td>Unique Name</td>
+</tr>
+<tr>
+<td>health_status</td>
+<td>Derived</td>
+<td>Healthy/Degraded/Unhealthy</td>
+</tr>
+<tr>
+<td>success_rate</td>
+<td>Float</td>
+<td>Calculated Metric</td>
+</tr>
+<tr>
+<td>last_success</td>
+<td>DateTime</td>
+<td>Timestamp</td>
+</tr>
+</tbody>
+</table>
+<h4><code>analysis_cache</code></h4>
+<table>
+<thead>
+<tr>
+<th>Field</th>
+<th>Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>id</td>
+<td>Integer</td>
+<td>Primary Key</td>
+</tr>
+<tr>
+<td>ticker</td>
+<td>String</td>
+<td>Stock Symbol (Indexed)</td>
+</tr>
+<tr>
+<td>timestamp</td>
+<td>DateTime</td>
+<td>Creation Time</td>
+</tr>
+<tr>
+<td>analysis_json</td>
+<td>JSON</td>
+<td>Full Analysis Result</td>
+</tr>
+</tbody>
+</table>
+<h3>4.3 Entity Relationship Diagram (ERD)</h3>
+<div class="mermaid">erDiagram
+    USERS ||--o{ OPERATION_LOGS : generates
+    DATA_SOURCE_STATUS ||--o{ OPERATION_LOGS : tracks
+
+    USERS {
+        int id PK
+        string email
+        string hashed_password
+        boolean is_active
+    }
+
+    OPERATION_LOGS {
+        int id PK
+        datetime timestamp
+        string operation_type
+        string source
+        string status
+        json details
+    }
+
+    DATA_SOURCE_STATUS {
+        int id PK
+        string source_name UK
+        string source_type
+        boolean enabled
+        float success_rate
+        string health_status
+    }
+
+    ANALYSIS_CACHE {
+        int id PK
+        string ticker UK
+        datetime timestamp
+        json analysis_json
+    }
+</div>
+<h3>4.2 Vector DB Schema (ChromaDB)</h3>
+<ul>
+<li><strong>Collection</strong>: <code>stock_market_news</code></li>
+<li><strong>Document</strong>: Text chunk from news article.</li>
+<li><strong>Metadata</strong>:</li>
+<li><code>ticker</code>: Stock symbol</li>
+<li><code>source</code>: Publisher name</li>
+<li><code>url</code>: Source URL</li>
+<li><code>timestamp</code>: Article date</li>
+<li><code>keywords</code>: Extracted tags</li>
+</ul>
+<hr />
+<h2>5. Low-Level Design (LLD) &amp; Flows</h2>
+<h3>5.1 Detailed Data Flow</h3>
+<div class="mermaid">flowchart TD
+    subgraph &quot;Input&quot;
+        Q[User Query/Ticker]
+    end
+
+    subgraph &quot;Orchestration&quot;
+        API[FastAPI Endpoint]
+        Cache{Check Cache?}
+        Mgr[Service Manager]
+    end
+
+    subgraph &quot;Acquisition&quot;
+        Scraper[News Scraper V2]
+        StockAPI[Stock Data API]
+        DDG[DuckDuckGo]
+        RSS[Google RSS]
+    end
+
+    subgraph &quot;Processing&quot;
+        Clean[Preprocessing]
+        Chunk[Chunker]
+        Embed[Embedding Model]
+        VDB[(ChromaDB)]
+    end
+
+    subgraph &quot;Analysis&quot;
+        RAG[RAG Engine]
+        LLM[OpenAI GPT-4]
+        Sent[Sentiment Engine]
+        Guard[Guardrails]
+    end
+
+    Q --> API
+    API --> Cache
+    Cache -- Hit --> API
+    Cache -- Miss --> Mgr
+
+    Mgr --> StockAPI
+    Mgr --> Scraper
+
+    Scraper --> DDG
+    Scraper --> RSS
+
+    DDG --> Clean
+    RSS --> Clean
+    Clean --> Chunk
+    Chunk --> Embed
+    Embed --> VDB
+
+    Mgr --> RAG
+    RAG --> VDB
+    VDB -- Context --> RAG
+    RAG --> LLM
+    RAG --> Sent
+    LLM --> Guard
+    Sent --> Guard
+    Guard --> API
+</div>
+<h3>5.2 Stock Analysis Sequence</h3>
+<div class="mermaid">sequenceDiagram
+    participant U as User
+    participant API as Backend API
+    participant Cache as Analysis Cache
+    participant Scraper as Scraper Service
+    participant VDB as Vector DB
+    participant RAG as RAG Service
+    participant LLM as OpenAI
+
+    U->>API: Request Analysis (Ticker)
+    API->>Cache: Check Cache (Ticker)
+    alt Cache Hit (< 1h)
+        Cache-->>API: Return Cached JSON
+        API-->>U: Return Result (⚡ Cached)
+    else Cache Miss
+        API->>Scraper: Fetch News (Async)
+        Scraper-->>VDB: Store Embeddings
+        API->>RAG: Generate Analysis
+        RAG->>VDB: Query Similar Docs
+        VDB-->>RAG: Return Context
+        RAG->>LLM: Send Prompt + Context
+        LLM-->>RAG: Return Structured JSON
+        RAG->>Cache: Store Result
+        RAG-->>API: Return Analysis
+        API-->>U: Return Result
+    end
+</div>
+<h3>5.2 Async API Integration</h3>
+<p>The system uses <code>asyncio</code> and <code>aiohttp</code> for non-blocking operations.</p>
+<pre><code class="language-python"># Conceptual Async Flow
+async def fetch_stock_data(ticker):
+    tasks = [api.fetch(ticker) for api in enabled_apis]
+    for future in asyncio.as_completed(tasks):
+        result = await future
+        if result: return result # Return first success
+</code></pre>
+<hr />
+<h2>6. Operational Details</h2>
+<h3>6.1 Logging &amp; Metrics</h3>
+<ul>
+<li><strong>Operation Logs</strong>: Every scrape, API call, and analysis is logged to MySQL.</li>
+<li><strong>Dashboard</strong>: Streamlit "System Status" tab visualizes:</li>
+<li>Scraper Health (Success Rate, Latency)</li>
+<li>API Status</li>
+<li>Error Logs (Recent failures with details)</li>
+</ul>
+<h3>6.2 Error Handling</h3>
+<ul>
+<li><strong>Graceful Degradation</strong>: If one API fails, the next priority API is used.</li>
+<li><strong>User Feedback</strong>: Detailed error messages (e.g., "Marketstack failed for RELICAB: No data") instead of generic 500s.</li>
+<li><strong>Fallback</strong>: If RAG fails, basic stock data is still returned.</li>
+</ul>
+<h3>6.3 Dashboard (Streamlit)</h3>
+<ul>
+<li><strong>Tab 1: Analysis</strong>: Search bar, Real-time charts, AI Insights, Sentiment Meter, References.</li>
+<li><strong>Tab 2: System Status</strong>: Health checks, API testing tools, Logs viewer.</li>
+<li><strong>Tab 3: Documentation</strong>: User guides and API references.</li>
+</ul>
+<hr />
+<h2>7. Future Roadmap</h2>
+<ul>
+<li><strong>User Personalization</strong>: Watchlists and alerts based on <code>users</code> table.</li>
+<li><strong>Advanced Charts</strong>: Technical indicators (RSI, MACD) overlay.</li>
+<li><strong>Multi-Asset Support</strong>: Crypto and Forex analysis.</li>
+</ul>
+</body>
+</html>
