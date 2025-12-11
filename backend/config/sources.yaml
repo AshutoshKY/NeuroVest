@@ -1,0 +1,78 @@
+# Data Sources Configuration
+# Add any news website or API here - the system will automatically use it
+
+data_sources:
+  # News Scrapers Configuration
+  # Note: Primary news gathering uses DuckDuckGo News API (hardcoded in data_ingestion.py)
+  # These are supplementary RSS feeds
+  
+  news_scrapers:      
+    - name: "Google News RSS"
+      enabled: true
+      type: "rss"
+      url: "https://news.google.com/rss/search?q={stock_query}+india+market&hl=en-IN&gl=IN&ceid=IN:en"
+      max_articles: 15
+      delay_seconds: 1
+      description: "Google News RSS Feed for stock-specific news"
+
+  stock_apis:
+    - name: "Finnhub"
+      enabled: true
+      priority: 1
+      base_url: "https://finnhub.io/api/v1"
+      api_key_env: "FINNHUB_API_KEY"
+      endpoints:
+        quote: "/quote"
+        company: "/stock/profile2"
+        news: "/company-news"
+      rate_limit_per_minute: 60
+      timeout_seconds: 10
+      description: "Real-time stock data and news (60 calls/min free)"
+      
+    - name: "Alpha Vantage"
+      enabled: true
+      priority: 2
+      base_url: "https://www.alphavantage.co/query"
+      api_key_env: "ALPHA_VANTAGE_API_KEY"
+      endpoints:
+        quote: "function=GLOBAL_QUOTE"
+        intraday: "function=TIME_SERIES_INTRADAY"
+      rate_limit_per_minute: 5
+      timeout_seconds: 15
+      description: "Stock data API (5 calls/min free tier)"
+      
+    - name: "Marketstack"
+      enabled: true
+      priority: 3
+      base_url: "http://api.marketstack.com/v1"
+      api_key_env: "MARKETSTACK_API_KEY"
+      endpoints:
+        eod: "/eod"
+        intraday: "/intraday"
+      rate_limit_per_minute: 10
+      timeout_seconds: 10
+      description: "Financial data API (100 calls/month free)"
+      
+    - name: "Yahoo Finance"
+      enabled: true
+      priority: 4
+      base_url: "https://query1.finance.yahoo.com/v8/finance/chart"
+      ticker_suffix: ".NS"
+      rate_limit_per_minute: 60
+      timeout_seconds: 10
+      description: "Free stock data API (fallback)"
+
+# Logging configuration
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  format: "json"  # json or text
+  file_path: "/app/logs/app.log"
+  max_file_size_mb: 100
+  backup_count: 5
+  
+# Performance settings
+performance:
+  max_concurrent_scrapers: 3
+  embedding_batch_size: 32
+  max_retries: 3
+  retry_delay_seconds: 5
