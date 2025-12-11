@@ -1,6 +1,6 @@
-# AI Market Analysis Assistant
+# NeuroVest
 
-An AI-powered stock market analysis platform for Indian markets (NSE/BSE) that provides real-time sentiment analysis, news aggregation, and AI-generated insights using OpenAI and RAG (Retrieval-Augmented Generation).
+Stock Market Analysis and Prediction App, An AI-powered stock market analysis platform for Indian markets (NSE/BSE) that provides real-time sentiment analysis, news aggregation, and AI-generated insights using OpenAI and RAG (Retrieval-Augmented Generation).
 
 ## Features
 
