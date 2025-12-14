@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - AI Stock Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        primary: { 500: '#6366f1', 600: '#4f46e5' },
+                        secondary: { 500: '#ec4899' } // Pink accent
+                    },
+                    animation: {
+                        'blob': 'blob 7s infinite',
+                        'scroll': 'scroll 20s linear infinite',
+                        'float': 'float 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        scroll: {
+                            '0%': { transform: 'translateX(0)' },
+                            '100%': { transform: 'translateX(-100%)' },
+                        },
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-20px)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            overflow-x: hidden;
+        }
+
+        /* 3D Dashboard Tilt Effect */
+        .hero-perspective {
+            perspective: 2000px;
+        }
+
+        .hero-rotate {
+            transform: rotateX(20deg) rotateY(-10deg) rotateZ(5deg) scale(0.9);
+            transition: transform 0.5s ease-out;
+            box-shadow: -50px 50px 100px rgba(0, 0, 0, 0.5);
+        }
+
+        .hero-rotate:hover {
+            transform: rotateX(0deg) rotateY(0deg) rotateZ(0deg) scale(1);
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+
+        /* Scroll Reveal */
+        .reveal {
+            opacity: 0;
+            transform: translateY(30px);
+            transition: all 0.8s ease-out;
+        }
+
+        .reveal.active {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        /* Custom Selection */
+        ::selection {
+            background: #6366f1;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="text-white antialiased font-sans">
+
+    <!-- 1. NAVBAR (Dynamic) -->
+    <nav class="fixed top-0 w-full z-50 transition-all duration-300" id="navbar">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <!-- Logo -->
+            <a href="#" class="flex items-center gap-2 group">
+                <div
+                    class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold text-xl shadow-lg shadow-primary-500/30 group-hover:scale-110 transition">
+                    N</div>
+                <span class="font-bold text-xl tracking-tight">NEURO<span class="text-primary-500">VEST</span></span>
+            </a>
+
+            <!-- Desktop Links -->
+            <div class="hidden md:flex items-center gap-8 text-sm font-medium text-gray-400">
+                <a href="#features" class="hover:text-white transition">Features</a>
+                <a href="#how-it-works" class="hover:text-white transition">How it Works</a>
+                <a href="#pricing" class="hover:text-white transition">Pricing</a>
+            </div>
+
+            <!-- Dynamic Auth Buttons -->
+            <div id="auth-buttons" class="flex items-center gap-4">
+                <!-- Injected via JS below -->
+            </div>
+        </div>
+        <!-- Blur Backdrop -->
+        <div class="absolute inset-0 -z-10 bg-black/50 backdrop-blur-md border-b border-white/5"></div>
+    </nav>
+
+    <!-- 2. HERO SECTION -->
+    <section class="relative pt-32 pb-20 lg:pt-48 lg:pb-32 overflow-hidden">
+        <!-- Background Blobs -->
+        <div
+            class="absolute top-0 left-1/4 w-96 h-96 bg-primary-500/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob">
+        </div>
+        <div
+            class="absolute top-0 right-1/4 w-96 h-96 bg-secondary-500/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-2000">
+        </div>
+        <div
+            class="absolute -bottom-32 left-1/3 w-96 h-96 bg-purple-500/20 rounded-full mix-blend-screen filter blur-3xl opacity-30 animate-blob animation-delay-4000">
+        </div>
+
+        <div class="max-w-7xl mx-auto px-6 text-center relative z-10">
+            <!-- Badge -->
+            <div
+                class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 mb-8 animate-fade-in-up">
+                <span class="flex h-2 w-2 relative">
+                    <span
+                        class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span class="text-xs font-semibold tracking-wide text-gray-300">NEUROVEST AI 2.0 IS LIVE</span>
+            </div>
+
+            <!-- Headline -->
+            <h1 class="text-5xl md:text-7xl font-extrabold tracking-tight mb-6 leading-tight">
+                Predict the Market <br />
+                <span
+                    class="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 via-purple-500 to-secondary-500">With
+                    Institutional Precision.</span>
+            </h1>
+            <p class="text-xl text-gray-400 max-w-2xl mx-auto mb-10 leading-relaxed">
+                Stop guessing. Start investing with an AI engine that processes 50+ data sources, sentiment analysis,
+                and technical patterns in milliseconds.
+            </p>
+
+            <!-- Buttons -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-20">
+                <button onclick="window.location.href='index.html'"
+                    class="px-8 py-4 bg-white text-black rounded-full font-bold text-lg hover:scale-105 transition shadow-[0_0_40px_-10px_rgba(255,255,255,0.3)]">
+                    Get Started Free
+                </button>
+                <button
+                    class="px-8 py-4 glass rounded-full font-bold text-lg hover:bg-white/10 transition flex items-center gap-2">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Watch Demo
+                </button>
+            </div>
+
+            <!-- 3D Dashboard Mockup -->
+            <div class="hero-perspective px-4">
+                <div
+                    class="hero-rotate relative max-w-5xl mx-auto rounded-xl border border-white/10 bg-[#0B1120] shadow-2xl overflow-hidden group">
+                    <!-- Overlay Gradient -->
+                    <div
+                        class="absolute inset-0 bg-gradient-to-t from-[#050505] via-transparent to-transparent z-10 pointer-events-none">
+                    </div>
+                    <!-- Image Placeholder (Replace with actual screenshot later if needed, but using CSS UI for now) -->
+                    <div class="w-full aspect-[16/9] bg-[#09090b] relative p-4 flex flex-col">
+                        <!-- Mock Header -->
+                        <div class="h-12 border-b border-white/10 flex items-center gap-4 px-4 mb-4">
+                            <div class="flex gap-2">
+                                <div class="w-3 h-3 rounded-full bg-red-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-yellow-500"></div>
+                                <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                            </div>
+                            <div class="w-1/3 h-2 bg-white/10 rounded-full"></div>
+                        </div>
+                        <!-- Mock Body -->
+                        <div class="flex-1 grid grid-cols-12 gap-4">
+                            <div
+                                class="col-span-8 bg-white/5 rounded-lg border border-white/5 relative overflow-hidden">
+                                <!-- Fake Chart -->
+                                <svg class="absolute bottom-0 left-0 w-full h-3/4" viewBox="0 0 100 50"
+                                    preserveAspectRatio="none">
+                                    <path d="M0,50 L10,40 L30,45 L50,20 L70,30 L100,5" fill="none" stroke="#6366f1"
+                                        stroke-width="0.5" />
+                                    <path d="M0,50 L10,40 L30,45 L50,20 L70,30 L100,5 V50 H0" fill="url(#grad)"
+                                        opacity="0.2" />
+                                    <defs>
+                                        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                                            <stop offset="0" stop-color="#6366f1" />
+                                            <stop offset="1" stop-color="transparent" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                            </div>
+                            <div class="col-span-4 flex flex-col gap-4">
+                                <div class="h-1/2 bg-white/5 rounded-lg border border-white/5 p-4">
+                                    <div class="w-8 h-8 rounded bg-primary-500 mb-2"></div>
+                                    <div class="h-2 w-1/2 bg-white/20 rounded mb-2"></div>
+                                    <div class="h-8 w-3/4 bg-white/10 rounded"></div>
+                                </div>
+                                <div class="h-1/2 bg-white/5 rounded-lg border border-white/5"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 3. INFINITE TICKER -->
+    <div class="w-full bg-white/5 border-y border-white/5 overflow-hidden py-3">
+        <div class="flex whitespace-nowrap animate-scroll">
+            <div class="flex gap-12 text-sm font-mono text-gray-400">
+                <span>RELIANCE <span class="text-green-400">▲ 2.47%</span></span>
+                <span>TCS <span class="text-green-400">▲ 1.17%</span></span>
+                <span>INFY <span class="text-red-400">▼ 0.89%</span></span>
+                <span>HDFCBANK <span class="text-green-400">▲ 3.22%</span></span>
+                <span>ZOMATO <span class="text-red-400">▼ 0.85%</span></span>
+                <span>ADANIENT <span class="text-green-400">▲ 5.12%</span></span>
+                <span>TATAMOTORS <span class="text-red-400">▼ 1.20%</span></span>
+                <span>ICICIBANK <span class="text-green-400">▲ 0.95%</span></span>
+                <!-- Duplicate for seamless loop -->
+                <span>RELIANCE <span class="text-green-400">▲ 2.47%</span></span>
+                <span>TCS <span class="text-green-400">▲ 1.17%</span></span>
+                <span>INFY <span class="text-red-400">▼ 0.89%</span></span>
+                <span>HDFCBANK <span class="text-green-400">▲ 3.22%</span></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- 4. FEATURES (Bento Grid) -->
+    <section id="features" class="py-24 relative">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center mb-16 reveal">
+                <h2 class="text-3xl md:text-5xl font-bold mb-4">Powerful Features for <span
+                        class="text-primary-500">Smart Trading</span></h2>
+                <p class="text-gray-400">Everything you need to make informed trading decisions in one platform.</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 auto-rows-[300px]">
+
+                <!-- Card 1: Main AI (Large) -->
+                <div class="md:col-span-2 glass-card rounded-3xl p-8 relative overflow-hidden group reveal">
+                    <div class="absolute top-0 right-0 p-8 opacity-50 group-hover:opacity-100 transition duration-500">
+                        <div class="w-32 h-32 bg-primary-500/20 rounded-full blur-3xl"></div>
+                    </div>
+                    <div class="relative z-10 h-full flex flex-col justify-between">
+                        <div>
+                            <div
+                                class="w-12 h-12 rounded-xl bg-primary-500 flex items-center justify-center text-white mb-6">
+                                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="text-2xl font-bold mb-2">Multi-Source Intelligence</h3>
+                            <p class="text-gray-400 max-w-md">We aggregate data from 5+ major financial APIs including
+                                Finnhub, Alpha Vantage, and NSE direct feeds to give you a complete market picture.</p>
+                        </div>
+                        <!-- Decorative UI at bottom -->
+                        <div class="flex gap-4 mt-8">
+                            <div class="px-4 py-2 bg-white/5 rounded-lg border border-white/5 text-xs text-gray-300">
+                                News Sentiment</div>
+                            <div class="px-4 py-2 bg-white/5 rounded-lg border border-white/5 text-xs text-gray-300">
+                                Technical Patterns</div>
+                            <div class="px-4 py-2 bg-white/5 rounded-lg border border-white/5 text-xs text-gray-300">
+                                Macro Data</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 2: Sentiment -->
+                <div class="glass-card rounded-3xl p-8 relative overflow-hidden group reveal">
+                    <div class="relative z-10">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-secondary-500 flex items-center justify-center text-white mb-6">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">Sentiment Engine</h3>
+                        <p class="text-gray-400 text-sm">Real-time analysis of news headlines and social signals.</p>
+
+                        <div class="mt-8 flex items-center gap-4">
+                            <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                                <div class="h-full bg-gradient-to-r from-green-400 to-emerald-600 w-[75%]"></div>
+                            </div>
+                            <span class="text-emerald-400 font-bold">Bullish</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card 3: Indicators -->
+                <div class="glass-card rounded-3xl p-8 relative overflow-hidden group reveal">
+                    <div class="relative z-10">
+                        <div
+                            class="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center text-white mb-6">
+                            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z">
+                                </path>
+                            </svg>
+                        </div>
+                        <h3 class="text-xl font-bold mb-2">7+ Pro Indicators</h3>
+                        <p class="text-gray-400 text-sm">RSI, MACD, Bollinger Bands, and custom AI-powered signals.</p>
+                    </div>
+                    <!-- Decorative Chart Line -->
+                    <svg class="absolute bottom-0 left-0 w-full h-24 text-purple-500/20" preserveAspectRatio="none"
+                        viewBox="0 0 100 50">
+                        <path d="M0,50 L20,30 L40,40 L60,10 L80,25 L100,0 V50 H0" fill="currentColor" />
+                    </svg>
+                </div>
+
+                <!-- Card 4: Real-Time (Large) -->
+                <div class="md:col-span-2 glass-card rounded-3xl p-8 relative overflow-hidden group reveal">
+                    <div class="relative z-10 flex flex-col md:flex-row gap-8 items-center">
+                        <div class="flex-1">
+                            <h3 class="text-2xl font-bold mb-4">Real-Time Risk Analysis</h3>
+                            <p class="text-gray-400 mb-6">Our system calculates volatility and potential downside risks
+                                instantly, helping you protect your capital before you enter a trade.</p>
+                            <button
+                                class="text-primary-400 font-bold hover:text-white transition flex items-center gap-2">Explore
+                                Risk Models <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M17 8l4 4m0 0l-4 4m4-4H3"></path>
+                                </svg></button>
+                        </div>
+                        <div
+                            class="w-full md:w-64 bg-[#0B1120] border border-white/10 rounded-xl p-4 shadow-xl transform group-hover:rotate-1 transition duration-500">
+                            <div class="flex justify-between text-xs text-gray-500 mb-2"><span>Risk
+                                    Score</span><span>Low</span></div>
+                            <div class="text-3xl font-bold text-white mb-2">12/100</div>
+                            <div class="w-full h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                                <div class="h-full bg-green-500 w-[12%]"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <!-- 5. STATS -->
+    <section class="py-20 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6 grid grid-cols-2 md:grid-cols-4 gap-8 text-center reveal">
+            <div>
+                <div class="text-4xl md:text-5xl font-bold text-white mb-2">5+</div>
+                <div class="text-sm text-gray-500 uppercase tracking-widest">Data Sources</div>
+            </div>
+            <div>
+                <div class="text-4xl md:text-5xl font-bold text-white mb-2">100M+</div>
+                <div class="text-sm text-gray-500 uppercase tracking-widest">Data Points</div>
+            </div>
+            <div>
+                <div class="text-4xl md:text-5xl font-bold text-white mb-2">99.9%</div>
+                <div class="text-sm text-gray-500 uppercase tracking-widest">Uptime</div>
+            </div>
+            <div>
+                <div class="text-4xl md:text-5xl font-bold text-white mb-2">&lt;100ms</div>
+                <div class="text-sm text-gray-500 uppercase tracking-widest">Latency</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 6. FOOTER -->
+    <footer class="border-t border-white/5 bg-[#020202] pt-16 pb-8">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-12 mb-12">
+                <div class="col-span-1 md:col-span-2">
+                    <div class="flex items-center gap-2 mb-4">
+                        <div
+                            class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-secondary-500 flex items-center justify-center text-white font-bold">
+                            N</div>
+                        <span class="font-bold text-xl">NEUROVEST</span>
+                    </div>
+                    <p class="text-gray-500 max-w-sm">Democratizing institutional-grade financial analysis for the
+                        modern retail investor.</p>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4">Product</h4>
+                    <ul class="space-y-2 text-gray-500 text-sm">
+                        <li><a href="#" class="hover:text-primary-500">Features</a></li>
+                        <li><a href="#" class="hover:text-primary-500">Pricing</a></li>
+                        <li><a href="#" class="hover:text-primary-500">API</a></li>
+                    </ul>
+                </div>
+                <div>
+                    <h4 class="text-white font-bold mb-4">Company</h4>
+                    <ul class="space-y-2 text-gray-500 text-sm">
+                        <li><a href="#" class="hover:text-primary-500">About</a></li>
+                        <li><a href="#" class="hover:text-primary-500">Blog</a></li>
+                        <li><a href="#" class="hover:text-primary-500">Contact</a></li>
+                    </ul>
+                </div>
+            </div>
+            <div
+                class="border-t border-white/5 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-600">
+                <div>&copy; 2025 NeuroVest AI. All rights reserved.</div>
+                <div class="flex gap-4">
+                    <a href="#">Privacy Policy</a>
+                    <a href="#">Terms of Service</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // --- 1. User Logic (Simulated) ---
+        // Change this to true/false to test different states
+        const userLoggedIn = false;
+
+        const authContainer = document.getElementById('auth-buttons');
+
+        if (userLoggedIn) {
+            authContainer.innerHTML = `
+                <button onclick="window.location.href='index.html'" class="px-5 py-2.5 bg-primary-600 hover:bg-primary-500 text-white text-sm font-bold rounded-full transition shadow-lg shadow-primary-500/20 flex items-center gap-2">
+                    Go to Dashboard
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                </button>
+            `;
+        } else {
+            authContainer.innerHTML = `
+                <a href="#" class="text-sm font-bold text-gray-300 hover:text-white transition">Log In</a>
+                <a href="#" class="px-5 py-2.5 bg-white text-black hover:bg-gray-200 text-sm font-bold rounded-full transition">Sign Up</a>
+            `;
+        }
+
+        // --- 2. Navbar Scroll Effect ---
+        window.addEventListener('scroll', () => {
+            const nav = document.getElementById('navbar');
+            if (window.scrollY > 50) {
+                nav.classList.add('bg-black/80', 'backdrop-blur-xl', 'border-b', 'border-white/5');
+            } else {
+                nav.classList.remove('bg-black/80', 'backdrop-blur-xl', 'border-b', 'border-white/5');
+            }
+        });
+
+        // --- 3. Scroll Reveal Animation ---
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('active');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        document.querySelectorAll('.reveal').forEach(el => observer.observe(el));
+    </script>
+</body>
+
+</html>

@@ -62,6 +62,7 @@ services:
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your_jwt_secret_key_change_this}
       DEBUG: "True"
       RATE_LIMIT_ENABLED: "${RATE_LIMIT_ENABLED:-true}"
+      USE_SMART_ORCHESTRATOR: "${USE_SMART_ORCHESTRATOR:-false}"
     ports:
       - "8000:8000"
       - "8501:8501"
@@ -77,25 +78,22 @@ services:
     networks:
       - stockmarket_network
     restart: unless-stopped
-  # Frontend (Disabled - using Streamlit instead)
-  # frontend:
-  #   build:
-  #     context: ./frontend
-  #     dockerfile: Dockerfile
-  #   container_name: stockmarket_frontend
-  #   environment:
-  #     NEXT_PUBLIC_API_URL: http://localhost:8000
-  #   ports:
-  #     - "3000:3000"
-  #   volumes:
-  #     - ./frontend:/app
-  #     - /app/node_modules
-  #     - /app/.next
-  #   depends_on:
-  #     - backend
-  #   networks:
-  #     - stockmarket_network
-  #   restart: unless-stopped
+  # Frontend (Next.js)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: stockmarket_frontend
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NODE_ENV: production
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - stockmarket_network
+    restart: unless-stopped
 
 volumes:
   mysql_data:

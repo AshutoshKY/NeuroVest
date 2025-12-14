@@ -1,0 +1,842 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest Pro Workstation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: {
+                        bg: { main: '#020617', panel: '#0B1120', card: '#111827' },
+                        border: { light: '#1f2937', active: '#374151' },
+                        brand: { 500: '#0ea5e9', 600: '#0284c7', glow: 'rgba(14, 165, 233, 0.2)' },
+                        bull: '#10b981', bear: '#ef4444'
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #e2e8f0;
+        }
+
+        /* Transitions for collapsing */
+        .sidebar-transition {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(5px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Utility for hiding/showing elements based on collapse state */
+        .collapsed .hide-on-collapse {
+            display: none;
+        }
+
+        .collapsed .show-on-collapse {
+            display: block;
+        }
+
+        .show-on-collapse {
+            display: none;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Tab Active State */
+        .tab-active {
+            border-bottom: 2px solid #0ea5e9;
+            color: white;
+        }
+
+        .setting-tab-active {
+            background: #1f2937;
+            color: #0ea5e9;
+            border-left: 3px solid #0ea5e9;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm">
+
+    <!-- 1. LEFT SIDEBAR (Collapsible) -->
+    <aside id="left-sidebar"
+        class="w-64 bg-bg-panel border-r border-border-light flex flex-col justify-between shrink-0 sidebar-transition z-50">
+
+        <!-- Top Section -->
+        <div>
+            <!-- Header / Logo -->
+            <div
+                class="h-16 flex items-center px-5 border-b border-border-light justify-between overflow-hidden whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-8 h-8 rounded bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                        N</div>
+                    <span
+                        class="font-bold text-lg tracking-tight hide-on-collapse transition-opacity duration-200">NEUROVEST</span>
+                </div>
+                <button onclick="toggleLeft()" class="text-slate-500 hover:text-white hide-on-collapse">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation Links -->
+            <nav class="p-3 space-y-1 mt-2">
+                <!-- Nav Item Helper -->
+                <script>
+                    const navItems = [
+                        { id: 'nav-dash', label: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z', page: 'dashboard' },
+                        { id: 'nav-watch', label: 'Watchlist', icon: 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z', page: 'watchlist' },
+                        { id: 'nav-hist', label: 'History', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', page: 'history' },
+                        { id: 'nav-docs', label: 'Docs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', page: 'docs' },
+                        { id: 'nav-set', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', page: 'settings' },
+                    ];
+                    navItems.forEach(item => {
+                        document.write(`
+                            <button onclick="navTo('${item.page}')" id="${item.id}" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition group relative">
+                                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"></path></svg>
+                                <span class="font-medium hide-on-collapse whitespace-nowrap">${item.label}</span>
+                                <!-- Tooltip for collapsed mode -->
+                                <span class="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 show-on-collapse pointer-events-none z-50 whitespace-nowrap shadow-lg border border-slate-700">${item.label}</span>
+                            </button>
+                        `);
+                    });
+                </script>
+            </nav>
+        </div>
+
+        <!-- Bottom User Section -->
+        <div class="p-4 border-t border-border-light">
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white shrink-0 ring-2 ring-slate-800">
+                    TD</div>
+                <div class="hide-on-collapse overflow-hidden">
+                    <p class="text-sm font-medium text-white truncate">testingdemo3</p>
+                    <p class="text-xs text-brand-500 truncate">Pro Plan</p>
+                </div>
+            </div>
+            <!-- Expand Button (Only visible when collapsed) -->
+            <button onclick="toggleLeft()"
+                class="w-full mt-4 text-slate-500 hover:text-white flex justify-center show-on-collapse">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 2. MAIN CONTENT AREA -->
+    <main class="flex-1 flex flex-col relative overflow-hidden bg-bg-main min-w-0">
+
+        <!-- Header Bar -->
+        <header class="h-16 border-b border-border-light bg-bg-main flex items-center justify-between px-6 shrink-0">
+            <div class="flex items-center gap-4">
+                <!-- Global Search -->
+                <div class="relative group">
+                    <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500 group-hover:text-brand-500 transition"
+                        fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text"
+                        class="bg-bg-card border border-border-light rounded-lg pl-10 pr-4 py-2 text-slate-200 focus:outline-none focus:border-brand-500 w-64 lg:w-96 transition-all"
+                        placeholder="Search (e.g. RELIANCE)..." onkeydown="if(event.key === 'Enter') navTo('analysis')">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <div
+                    class="hidden md:flex items-center gap-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded text-emerald-500 text-xs font-medium">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> Market Open
+                </div>
+                <button onclick="toggleRight()"
+                    class="text-slate-400 hover:text-white border border-border-light p-2 rounded hover:bg-white/5">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4v16"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- DYNAMIC PAGES CONTAINER -->
+        <div id="page-container" class="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth relative">
+
+            <!-- PAGE 1: LANDING DASHBOARD (Empty State) -->
+            <div id="page-dashboard"
+                class="page-section fade-in flex flex-col items-center justify-center h-full pb-20">
+                <div
+                    class="w-16 h-16 bg-gradient-to-tr from-brand-600 to-cyan-500 rounded-2xl flex items-center justify-center mb-6 shadow-2xl shadow-brand-500/20">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-4xl font-bold text-white mb-2">Welcome to <span class="text-brand-500">NeuroVest</span>
+                </h1>
+                <p class="text-slate-400 mb-8 text-lg">AI-Powered Institutional Stock Analysis</p>
+                <div class="flex gap-4">
+                    <button onclick="navTo('analysis')"
+                        class="px-6 py-3 bg-brand-600 hover:bg-brand-500 text-white rounded-lg font-medium transition shadow-lg shadow-brand-500/20">Start
+                        Analysis</button>
+                    <button onclick="navTo('watchlist')"
+                        class="px-6 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium border border-slate-700 transition">View
+                        Watchlist</button>
+                </div>
+            </div>
+
+            <!-- PAGE 2: ACTIVE ANALYSIS (The "Meat") -->
+            <div id="page-analysis" class="page-section hidden fade-in max-w-7xl mx-auto">
+
+                <!-- Stock Header -->
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span
+                                class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-bold border border-slate-700">NSE</span>
+                            <span class="text-xs text-slate-500">Consumer Cyclical • Large Cap</span>
+                        </div>
+                        <h1 class="text-3xl font-bold text-white tracking-tight">Reliance Industries Ltd</h1>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-center gap-3 justify-end">
+                            <span class="text-4xl font-mono font-bold text-white">₹1,556.00</span>
+                            <div class="flex flex-col items-end">
+                                <span
+                                    class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-sm font-bold border border-emerald-500/20">+2.47%</span>
+                                <span class="text-[10px] text-slate-500 mt-0.5">+37.50 today</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Analysis Grid -->
+                <div class="grid grid-cols-12 gap-6 mb-6">
+                    <!-- Chart Area (Smaller Height as requested) -->
+                    <div
+                        class="col-span-12 lg:col-span-8 bg-bg-card border border-border-light rounded-xl p-1 relative group">
+                        <!-- Chart Toolbar -->
+                        <div class="absolute top-4 left-4 z-10 flex gap-1">
+                            <button
+                                class="px-2 py-1 bg-slate-800 text-xs text-white rounded hover:bg-slate-700 border border-slate-700">1D</button>
+                            <button
+                                class="px-2 py-1 bg-bg-main text-xs text-slate-400 rounded hover:text-white border border-transparent hover:border-slate-700">1W</button>
+                            <button
+                                class="px-2 py-1 bg-bg-main text-xs text-slate-400 rounded hover:text-white border border-transparent hover:border-slate-700">1M</button>
+                        </div>
+                        <!-- Mock Chart -->
+                        <div class="h-[320px] w-full bg-[#0d1321] rounded-lg overflow-hidden relative">
+                            <svg class="w-full h-full" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.3" />
+                                        <stop offset="1" stop-color="#0ea5e9" stop-opacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path
+                                    d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60"
+                                    fill="none" stroke="#0ea5e9" stroke-width="2" />
+                                <path
+                                    d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60 V320 H0 Z"
+                                    fill="url(#chartGrad)" />
+                                <!-- Grid Lines -->
+                                <line x1="0" y1="80" x2="100%" y2="80" stroke="#1f2937" stroke-dasharray="4" />
+                                <line x1="0" y1="160" x2="100%" y2="160" stroke="#1f2937" stroke-dasharray="4" />
+                                <line x1="0" y1="240" x2="100%" y2="240" stroke="#1f2937" stroke-dasharray="4" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Key Stats & Confidence -->
+                    <div class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+                        <!-- Confidence Gauge -->
+                        <div
+                            class="bg-bg-card border border-border-light rounded-xl p-5 text-center flex-1 flex flex-col justify-center">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">AI
+                                Recommendation</div>
+                            <div class="text-4xl font-black text-white mb-2 tracking-tighter">STRONG BUY</div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full mb-2 overflow-hidden">
+                                <div class="bg-brand-500 h-full w-[85%] shadow-[0_0_15px_rgba(14,165,233,0.6)]"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                                <span>SELL</span>
+                                <span class="text-brand-500">85% CONFIDENCE</span>
+                                <span>BUY</span>
+                            </div>
+                        </div>
+
+                        <!-- Mini Fundamental Grid -->
+                        <div class="grid grid-cols-2 gap-3 h-32">
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">Market Cap</div>
+                                <div class="text-sm font-bold text-white mt-1">$21.06T</div>
+                            </div>
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">P/E Ratio</div>
+                                <div class="text-sm font-bold text-white mt-1">25.32</div>
+                            </div>
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">Volume</div>
+                                <div class="text-sm font-bold text-white mt-1">1.0L</div>
+                            </div>
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">Rank</div>
+                                <div class="text-sm font-bold text-white mt-1">#1</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabbed Data Section (Clean & Dense) -->
+                <div class="bg-bg-card border border-border-light rounded-xl overflow-hidden min-h-[300px]">
+                    <!-- Tab Header -->
+                    <div class="flex border-b border-border-light bg-bg-panel overflow-x-auto">
+                        <button onclick="switchTab('tab-ai')" id="btn-tab-ai"
+                            class="px-6 py-3 text-sm font-medium text-white border-r border-border-light hover:bg-slate-800 transition tab-active">AI
+                            Analysis</button>
+                        <button onclick="switchTab('tab-tech')" id="btn-tab-tech"
+                            class="px-6 py-3 text-sm font-medium text-slate-400 border-r border-border-light hover:bg-slate-800 transition">Technical
+                            Indicators</button>
+                        <button onclick="switchTab('tab-risk')" id="btn-tab-risk"
+                            class="px-6 py-3 text-sm font-medium text-slate-400 border-r border-border-light hover:bg-slate-800 transition">Risk
+                            Factors</button>
+                        <button onclick="switchTab('tab-ref')" id="btn-tab-ref"
+                            class="px-6 py-3 text-sm font-medium text-slate-400 border-r border-border-light hover:bg-slate-800 transition">References
+                            (5)</button>
+                    </div>
+
+                    <!-- Tab Content -->
+                    <div class="p-6">
+                        <!-- AI Tab -->
+                        <div id="tab-ai" class="tab-content animate-fade-in">
+                            <h3 class="text-lg font-bold text-white mb-3">AI Executive Summary</h3>
+                            <p class="text-slate-300 leading-relaxed mb-6 max-w-4xl">
+                                Reliance Industries is currently exhibiting a <span
+                                    class="text-emerald-400 font-semibold">positive breakout structure</span> above the
+                                ₹1,550 resistance zone.
+                                Our retrieval-augmented generation (RAG) models have correlated a 30% increase in
+                                institutional buy volume with recent positive news regarding the Jio Financial listing.
+                                Short-term sentiment is overwhelmingly bullish, though minor consolidation is expected
+                                near ₹1,580.
+                            </p>
+                            <div class="flex gap-4">
+                                <div
+                                    class="px-3 py-1 bg-slate-800 rounded border border-slate-700 text-xs text-slate-400">
+                                    Sentiment: <span class="text-white">Bullish</span></div>
+                                <div
+                                    class="px-3 py-1 bg-slate-800 rounded border border-slate-700 text-xs text-slate-400">
+                                    News Impact: <span class="text-white">High</span></div>
+                                <div
+                                    class="px-3 py-1 bg-slate-800 rounded border border-slate-700 text-xs text-slate-400">
+                                    Volatility: <span class="text-white">Low</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Technicals Tab -->
+                        <div id="tab-tech" class="tab-content hidden animate-fade-in">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="p-4 bg-slate-900 rounded border border-slate-800">
+                                    <div class="text-slate-500 text-xs mb-1">RSI (14)</div>
+                                    <div class="text-xl font-mono text-white">62.91</div>
+                                    <div class="text-xs text-yellow-500 mt-1">Neutral</div>
+                                </div>
+                                <div class="p-4 bg-slate-900 rounded border border-slate-800">
+                                    <div class="text-slate-500 text-xs mb-1">MACD (12, 26)</div>
+                                    <div class="text-xl font-mono text-white">-4.10</div>
+                                    <div class="text-xs text-red-500 mt-1">Bearish Divergence</div>
+                                </div>
+                                <div class="p-4 bg-slate-900 rounded border border-slate-800">
+                                    <div class="text-slate-500 text-xs mb-1">Bollinger Bands</div>
+                                    <div class="text-xl font-mono text-white">Upper Band</div>
+                                    <div class="text-xs text-emerald-500 mt-1">Breakout Potential</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Tab -->
+                        <div id="tab-risk" class="tab-content hidden animate-fade-in">
+                            <div class="space-y-3">
+                                <div
+                                    class="flex items-start gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-lg">
+                                    <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <div>
+                                        <h4 class="text-white font-medium text-sm">Crude Oil Volatility</h4>
+                                        <p class="text-slate-400 text-xs mt-1">High fluctuation in global crude prices
+                                            may impact refining margins by +/- 5% this quarter.</p>
+                                    </div>
+                                </div>
+                                <div
+                                    class="flex items-start gap-3 p-3 bg-yellow-500/5 border border-yellow-500/10 rounded-lg">
+                                    <svg class="w-5 h-5 text-yellow-500 shrink-0" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    <div>
+                                        <h4 class="text-white font-medium text-sm">Regulatory Telecom Shift</h4>
+                                        <p class="text-slate-400 text-xs mt-1">Upcoming 5G spectrum allocation policies
+                                            could increase capex requirements.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Refs Tab -->
+                        <div id="tab-ref" class="tab-content hidden animate-fade-in">
+                            <ul class="space-y-2">
+                                <li
+                                    class="flex justify-between items-center p-3 hover:bg-slate-800 rounded cursor-pointer group transition">
+                                    <div class="flex gap-3">
+                                        <div class="w-1 bg-brand-500 rounded-full h-full"></div>
+                                        <div>
+                                            <div class="text-sm text-white group-hover:text-brand-400">MoneyControl
+                                            </div>
+                                            <div class="text-xs text-slate-500">Dec 13, 2025 • Reliance retail arm
+                                                expansion plans...</div>
+                                        </div>
+                                    </div>
+                                    <svg class="w-4 h-4 text-slate-600 group-hover:text-white" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14">
+                                        </path>
+                                    </svg>
+                                </li>
+                                <li
+                                    class="flex justify-between items-center p-3 hover:bg-slate-800 rounded cursor-pointer group transition">
+                                    <div class="flex gap-3">
+                                        <div class="w-1 bg-brand-500 rounded-full h-full"></div>
+                                        <div>
+                                            <div class="text-sm text-white group-hover:text-brand-400">Bloomberg Quint
+                                            </div>
+                                            <div class="text-xs text-slate-500">Dec 12, 2025 • Oil sector outlook
+                                                remains mixed...</div>
+                                        </div>
+                                    </div>
+                                    <svg class="w-4 h-4 text-slate-600 group-hover:text-white" fill="none"
+                                        stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14">
+                                        </path>
+                                    </svg>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 3: HISTORY -->
+            <div id="page-history" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold text-white mb-6">Analysis History</h2>
+                <div class="bg-bg-card border border-border-light rounded-xl overflow-hidden">
+                    <table class="w-full text-left border-collapse">
+                        <thead
+                            class="bg-bg-panel text-xs text-slate-400 uppercase tracking-wider border-b border-border-light">
+                            <tr>
+                                <th class="px-6 py-4 font-medium">Ticker</th>
+                                <th class="px-6 py-4 font-medium">Signal</th>
+                                <th class="px-6 py-4 font-medium">Date</th>
+                                <th class="px-6 py-4 font-medium">Confidence</th>
+                                <th class="px-6 py-4 font-medium text-right">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-border-light">
+                            <tr class="hover:bg-slate-800/50 transition">
+                                <td class="px-6 py-4 font-bold text-white">RELIANCE</td>
+                                <td class="px-6 py-4"><span
+                                        class="px-2 py-1 rounded bg-emerald-500/10 text-emerald-500 text-xs border border-emerald-500/20">Bullish</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-400 text-xs">Today, 01:39 PM</td>
+                                <td class="px-6 py-4 font-mono text-slate-300">0.85%</td>
+                                <td class="px-6 py-4 text-right"><button
+                                        class="text-brand-500 hover:text-white text-xs bg-slate-800 px-3 py-1 rounded">View</button>
+                                </td>
+                            </tr>
+                            <tr class="hover:bg-slate-800/50 transition">
+                                <td class="px-6 py-4 font-bold text-white">HAL</td>
+                                <td class="px-6 py-4"><span
+                                        class="px-2 py-1 rounded bg-red-500/10 text-red-500 text-xs border border-red-500/20">Bearish</span>
+                                </td>
+                                <td class="px-6 py-4 text-slate-400 text-xs">Today, 01:34 PM</td>
+                                <td class="px-6 py-4 font-mono text-slate-300">0.65%</td>
+                                <td class="px-6 py-4 text-right"><button
+                                        class="text-brand-500 hover:text-white text-xs bg-slate-800 px-3 py-1 rounded">View</button>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- PAGE 4: WATCHLIST -->
+            <div id="page-watchlist" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-white">Watchlist</h2>
+                    <button
+                        class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded text-xs font-medium shadow-lg shadow-brand-500/20">+
+                        Add Stock</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    <div class="bg-bg-card border border-border-light rounded-xl p-5 hover:border-brand-500/50 transition group cursor-pointer"
+                        onclick="navTo('analysis')">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-white text-lg">RELIANCE</h3>
+                                <p class="text-xs text-slate-500">Reliance Industries</p>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-emerald-500 text-sm font-mono font-bold">+2.47%</div>
+                                <div class="text-slate-500 text-[10px]">NSE</div>
+                            </div>
+                        </div>
+                        <div class="flex justify-between items-end pt-4 border-t border-border-light">
+                            <div>
+                                <div class="text-[10px] text-slate-500 uppercase">Price</div>
+                                <div class="text-xl font-bold text-white font-mono">₹1,556.00</div>
+                            </div>
+                            <button
+                                class="text-xs bg-brand-500/10 text-brand-500 px-3 py-1.5 rounded hover:bg-brand-500 hover:text-white transition">Analyze</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 5: DOCS -->
+            <div id="page-docs" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <div class="flex gap-8">
+                    <div class="w-64 shrink-0 hidden lg:block">
+                        <div class="sticky top-0 space-y-1">
+                            <div class="text-xs font-bold text-slate-500 uppercase mb-2">Getting Started</div>
+                            <button
+                                class="w-full text-left px-3 py-2 bg-brand-500/10 text-brand-500 rounded text-sm font-medium">System
+                                Overview</button>
+                            <button
+                                class="w-full text-left px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded text-sm transition">Architecture</button>
+                            <button
+                                class="w-full text-left px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded text-sm transition">API
+                                Endpoints</button>
+                        </div>
+                    </div>
+                    <div class="flex-1 bg-bg-card border border-border-light rounded-xl p-8">
+                        <h1 class="text-3xl font-bold text-white mb-6">Technical Documentation</h1>
+                        <p class="text-slate-400 mb-6 leading-relaxed">
+                            NeuroVest is an enterprise-grade AI-powered stock market analysis platform. This
+                            documentation covers the system architecture, RAG pipeline, and API integration details.
+                        </p>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div class="p-4 bg-bg-panel rounded border border-border-light">
+                                <h4 class="text-white font-bold mb-2">Frontend Stack</h4>
+                                <p class="text-xs text-slate-400">Next.js 14, Tailwind CSS, Framer Motion.</p>
+                            </div>
+                            <div class="p-4 bg-bg-panel rounded border border-border-light">
+                                <h4 class="text-white font-bold mb-2">Backend & AI</h4>
+                                <p class="text-xs text-slate-400">FastAPI, Azure OpenAI GPT-4, ChromaDB.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 6: SETTINGS (Exact Replica) -->
+            <div id="page-settings" class="page-section hidden fade-in max-w-5xl mx-auto">
+                <div class="flex items-center gap-2 mb-6 text-slate-400 cursor-pointer hover:text-white"
+                    onclick="navTo('dashboard')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span>Back to Dashboard</span>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-6">Settings</h2>
+
+                <div
+                    class="bg-bg-card border border-border-light rounded-xl overflow-hidden min-h-[500px] flex flex-col md:flex-row">
+                    <!-- Settings Sidebar -->
+                    <div
+                        class="w-full md:w-64 bg-bg-panel border-r border-border-light p-2 flex flex-row md:flex-col overflow-x-auto">
+                        <button onclick="settingTab('set-profile')" id="btn-set-profile"
+                            class="text-left px-4 py-3 text-sm font-medium text-white bg-slate-800/50 border-l-2 border-brand-500 md:border-l-2 md:border-b-0 border-b-2 setting-btn">Profile</button>
+                        <button onclick="settingTab('set-pass')" id="btn-set-pass"
+                            class="text-left px-4 py-3 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 border-l-2 border-transparent md:border-l-2 md:border-b-0 border-b-2 setting-btn">Password</button>
+                        <button onclick="settingTab('set-pref')" id="btn-set-pref"
+                            class="text-left px-4 py-3 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 border-l-2 border-transparent md:border-l-2 md:border-b-0 border-b-2 setting-btn">Preferences</button>
+                        <button onclick="settingTab('set-sec')" id="btn-set-sec"
+                            class="text-left px-4 py-3 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 border-l-2 border-transparent md:border-l-2 md:border-b-0 border-b-2 setting-btn">Security</button>
+                    </div>
+
+                    <!-- Settings Content -->
+                    <div class="flex-1 p-8">
+                        <!-- Profile Tab -->
+                        <div id="set-profile" class="setting-content">
+                            <h3 class="text-xl font-bold text-white mb-6">Profile Information</h3>
+                            <div class="space-y-4 max-w-lg">
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+                                    <input type="text" value="testingdemo3@neurovest.com" disabled
+                                        class="w-full bg-slate-900 border border-border-light rounded-lg px-3 py-2.5 text-slate-400 cursor-not-allowed">
+                                    <p class="text-[10px] text-slate-600 mt-1">Email cannot be changed.</p>
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-medium text-slate-400 mb-1.5">Full Name</label>
+                                    <input type="text" value="testingdemo3"
+                                        class="w-full bg-bg-panel border border-border-light rounded-lg px-3 py-2.5 text-white focus:border-brand-500 outline-none">
+                                </div>
+                                <button
+                                    class="mt-4 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-medium transition">Save
+                                    Changes</button>
+                            </div>
+                        </div>
+
+                        <!-- Security Tab -->
+                        <div id="set-sec" class="setting-content hidden">
+                            <h3 class="text-xl font-bold text-white mb-2">Active Sessions</h3>
+                            <p class="text-slate-400 text-sm mb-6">You can have maximum 2 active sessions.</p>
+
+                            <div class="bg-bg-panel border border-brand-500 rounded-lg p-4 mb-6 relative">
+                                <span
+                                    class="absolute top-2 right-2 px-2 py-0.5 bg-brand-500 text-white text-[10px] rounded">This
+                                    Device</span>
+                                <div class="flex gap-4">
+                                    <div
+                                        class="w-10 h-10 bg-slate-700 rounded flex items-center justify-center text-white">
+                                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z">
+                                            </path>
+                                        </svg></div>
+                                    <div>
+                                        <div class="text-white font-medium">Mac</div>
+                                        <div class="text-xs text-slate-500">Chrome 143.0 • Mac OS X 10.15.7</div>
+                                        <div class="text-xs text-slate-500 mt-1">IP: 192.168.97.1 • Last active: Now
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <button
+                                class="w-full py-2 bg-red-500/10 border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white rounded transition font-medium">Logout
+                                from All Other Devices</button>
+                        </div>
+
+                        <!-- Password Tab -->
+                        <div id="set-pass" class="setting-content hidden">
+                            <h3 class="text-xl font-bold text-white mb-6">Change Password</h3>
+                            <div class="space-y-4 max-w-lg">
+                                <input type="password" placeholder="Current password"
+                                    class="w-full bg-bg-panel border border-border-light rounded-lg px-3 py-2.5 text-white focus:border-brand-500 outline-none">
+                                <input type="password" placeholder="New password"
+                                    class="w-full bg-bg-panel border border-border-light rounded-lg px-3 py-2.5 text-white focus:border-brand-500 outline-none">
+                                <input type="password" placeholder="Confirm new password"
+                                    class="w-full bg-bg-panel border border-border-light rounded-lg px-3 py-2.5 text-white focus:border-brand-500 outline-none">
+                                <button
+                                    class="mt-4 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded font-medium transition">Update
+                                    Password</button>
+                            </div>
+                        </div>
+
+                        <div id="set-pref" class="setting-content hidden">
+                            <h3 class="text-xl font-bold text-white mb-4">Preferences</h3>
+                            <p class="text-slate-400">Notification settings go here...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 3. RIGHT SIDEBAR (Collapsible) -->
+    <aside id="right-sidebar"
+        class="w-72 bg-bg-panel border-l border-border-light hidden xl:flex flex-col shrink-0 sidebar-transition z-40">
+        <div class="h-16 flex items-center justify-between px-4 border-b border-border-light shrink-0">
+            <span class="font-bold text-slate-300 hide-on-collapse">Market Context</span>
+            <button onclick="toggleRight()" class="text-slate-500 hover:text-white">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7">
+                    </path>
+                </svg>
+            </button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-6 hide-on-collapse">
+            <!-- Saved Analysis -->
+            <div>
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Saved (1/10)</h4>
+                <div
+                    class="p-3 rounded-lg bg-bg-card border border-border-light cursor-pointer hover:border-slate-500 transition">
+                    <div class="flex justify-between mb-1"><span class="font-bold text-white">RELIANCE</span><span
+                            class="text-xs text-slate-500">Bullish</span></div>
+                    <div class="flex justify-between items-end"><span
+                            class="text-xs text-emerald-500">₹1,556</span><span class="text-[10px] text-slate-600">Dec
+                            13</span></div>
+                </div>
+            </div>
+
+            <!-- Market Trending -->
+            <div>
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Trending</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center group cursor-pointer">
+                        <div>
+                            <div class="text-sm text-slate-300 group-hover:text-brand-500">TCS</div>
+                            <div class="text-[10px] text-slate-500">IT Services</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-white">₹3,789</div>
+                            <div class="text-[10px] text-emerald-500">+1.17%</div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center group cursor-pointer">
+                        <div>
+                            <div class="text-sm text-slate-300 group-hover:text-brand-500">HDFCBANK</div>
+                            <div class="text-[10px] text-slate-500">Banking</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs text-white">₹1,653</div>
+                            <div class="text-[10px] text-emerald-500">+3.22%</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Did You Know -->
+            <div class="p-3 bg-purple-500/5 border border-purple-500/10 rounded-lg">
+                <div class="flex items-center gap-2 mb-1"><svg class="w-4 h-4 text-purple-400" fill="none"
+                        viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                    </svg><span class="text-xs font-bold text-purple-400">Did You Know?</span></div>
+                <p class="text-[11px] text-slate-400">NSE is the world's largest derivatives exchange by contract
+                    volume.</p>
+            </div>
+        </div>
+
+        <!-- Collapsed Vertical Text -->
+        <div class="show-on-collapse h-full w-full flex items-center justify-center">
+            <span class="text-slate-500 -rotate-90 text-xs font-bold tracking-widest whitespace-nowrap">MARKET
+                CONTEXT</span>
+        </div>
+    </aside>
+
+    <script>
+        // --- 1. Navigation Logic ---
+        function navTo(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+            // Show selected
+            document.getElementById('page-' + pageId).classList.remove('hidden');
+
+            // Highlight Nav Item
+            document.querySelectorAll('nav button').forEach(el => {
+                el.classList.remove('bg-white/5', 'text-white');
+                el.classList.add('text-slate-400');
+            });
+            const activeBtn = document.getElementById('nav-' + (pageId === 'dashboard' ? 'dash' : pageId.substring(0, 4)));
+            if (activeBtn) {
+                activeBtn.classList.add('bg-white/5', 'text-white');
+                activeBtn.classList.remove('text-slate-400');
+            }
+        }
+
+        // --- 2. Sidebar Collapse Logic ---
+        function toggleLeft() {
+            const sb = document.getElementById('left-sidebar');
+            sb.classList.toggle('w-64');
+            sb.classList.toggle('w-16');
+            sb.classList.toggle('collapsed');
+        }
+
+        function toggleRight() {
+            const sb = document.getElementById('right-sidebar');
+            sb.classList.toggle('w-72');
+            sb.classList.toggle('w-8'); // Mini strip
+            sb.classList.toggle('collapsed');
+        }
+
+        // --- 3. Dashboard Tab Logic ---
+        function switchTab(tabId) {
+            // Hide all contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            // Reset buttons
+            const btns = ['btn-tab-ai', 'btn-tab-tech', 'btn-tab-risk', 'btn-tab-ref'];
+            btns.forEach(id => {
+                const btn = document.getElementById(id);
+                btn.classList.remove('tab-active', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+
+            // Active button
+            const activeBtn = document.getElementById('btn-' + tabId);
+            activeBtn.classList.add('tab-active', 'text-white');
+            activeBtn.classList.remove('text-slate-400');
+        }
+
+        // --- 4. Settings Tab Logic ---
+        function settingTab(tabId) {
+            document.querySelectorAll('.setting-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+
+            document.querySelectorAll('.setting-btn').forEach(el => {
+                el.classList.remove('text-white', 'bg-slate-800/50', 'border-brand-500');
+                el.classList.add('text-slate-400', 'border-transparent');
+            });
+
+            const btn = document.getElementById('btn-' + tabId);
+            btn.classList.add('text-white', 'bg-slate-800/50', 'border-brand-500');
+            btn.classList.remove('text-slate-400', 'border-transparent');
+        }
+
+        // Init
+        navTo('dashboard');
+    </script>
+</body>
+
+</html>

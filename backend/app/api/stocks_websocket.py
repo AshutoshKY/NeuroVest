@@ -128,7 +128,7 @@ async def stream_analysis_progress(
         rag_query = f"Provide detailed stock analysis for {ticker}"
         
         # Generate analysis using RAG service (synchronous, not async)
-        analysis = rag_service.generate_analysis(rag_query, ticker=ticker)
+        analysis = await rag_service.generate_analysis(rag_query, ticker=ticker)
         
         # Step 4: Finalizing (95%)
         await websocket.send_json({

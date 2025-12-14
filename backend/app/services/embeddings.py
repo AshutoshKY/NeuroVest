@@ -91,12 +91,33 @@ class EmbeddingService:
             })
             
             # Add to ChromaDB
-            self._get_collection(collection_type).add(
+            collection = self._get_collection(collection_type)
+            collection.add(
                 embeddings=embeddings,
                 documents=documents,
                 metadatas=metadatas,
                 ids=ids
             )
+            
+            # FORCE INDEXING TO COMPLETE: Verify documents are retrievable
+            # This ensures ChromaDB has finished indexing before we return
+            if ids:
+                try:
+                    # Attempt to retrieve the first document we just added
+                    verify_result = collection.get(ids=[ids[0]], limit=1)
+                    
+                    # If retrieval fails, wait briefly and try once more
+                    if not verify_result.get('documents'):
+                        import time
+                        time.sleep(0.05)  # 50ms wait
+                        verify_result = collection.get(ids=[ids[0]], limit=1)
+                    
+                    if verify_result.get('documents'):
+                        logger.debug(f"✅ Verified indexing complete for {len(ids)} documents")
+                    else:
+                        logger.warning(f"⚠️  Indexing verification returned empty, but proceeding")
+                except Exception as verify_err:
+                    logger.warning(f"⚠️  Indexing verification failed: {verify_err}, but documents were added")
             
             logger.info("✅ Documents added to ChromaDB", extra={
                 "operation": "chromadb_add",
@@ -213,12 +234,12 @@ class EmbeddingService:
                 "status": "success"
             })
             
-            if result_count == 0:
-                logger.warning("⚠️  No documents found in ChromaDB", extra={
+            if not result_count:
+                logger.warning("⚠️  No historical analyses found in ChromaDB (expected for first-time analysis)", extra={
                     "operation": "chromadb_get",
                     "collection": collection_type,
-                    "filter": str(where),
-                    "status": "empty_result"
+                    "status": "empty_result_expected",
+                    "context": "historical_analyses"
                 })
             
             return results

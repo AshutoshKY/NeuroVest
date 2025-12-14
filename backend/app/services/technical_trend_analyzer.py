@@ -80,7 +80,13 @@ class TechnicalTrendAnalyzer:
             # Price Trend Analysis
             if len(prices) >= 2:
                 price_trend = TechnicalTrendAnalyzer._calculate_trend(prices)
-                price_change_pct = ((prices[0] - prices[-1]) / prices[-1]) * 100
+                # Protect against division by zero
+                if prices[-1] != 0:
+                    price_change_pct = ((prices[0] - prices[-1]) / prices[-1]) * 100
+                else:
+                    logger.warning(f"Oldest price is zero for {ticker}, cannot calculate percentage change")
+                    price_change_pct = 0.0
+                
                 trends["price_trend"] = {
                     "direction": price_trend["direction"],
                     "strength": price_trend["strength"],

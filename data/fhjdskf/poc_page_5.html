@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest Pro Workstation</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: {
+                        bg: { main: '#020617', panel: '#0B1120', card: '#111827' },
+                        border: { light: '#1f2937', active: '#374151' },
+                        brand: { 500: '#0ea5e9', 600: '#0284c7', glow: 'rgba(14, 165, 233, 0.2)' },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #e2e8f0;
+        }
+
+        .sidebar-transition {
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.3s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .collapsed .hide-on-collapse {
+            display: none;
+        }
+
+        .collapsed .show-on-collapse {
+            display: block;
+        }
+
+        .show-on-collapse {
+            display: none;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #374151;
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .tab-active {
+            border-bottom: 2px solid #0ea5e9;
+            color: white;
+        }
+
+        .setting-tab-active {
+            background: #1f2937;
+            color: #0ea5e9;
+            border-left: 3px solid #0ea5e9;
+        }
+
+        /* Search Bar Glow */
+        .hero-input:focus {
+            box-shadow: 0 0 20px rgba(14, 165, 233, 0.15);
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm">
+
+    <!-- 1. LEFT SIDEBAR (Collapsible) -->
+    <aside id="left-sidebar"
+        class="w-64 bg-bg-panel border-r border-border-light flex flex-col justify-between shrink-0 sidebar-transition z-50">
+        <div>
+            <!-- Header -->
+            <div
+                class="h-16 flex items-center px-5 border-b border-border-light justify-between overflow-hidden whitespace-nowrap">
+                <div class="flex items-center gap-3">
+                    <div
+                        class="w-8 h-8 rounded bg-gradient-to-br from-brand-500 to-indigo-600 flex items-center justify-center text-white font-bold shrink-0">
+                        N</div>
+                    <span
+                        class="font-bold text-lg tracking-tight hide-on-collapse transition-opacity duration-200">NEUROVEST</span>
+                </div>
+                <button onclick="toggleLeft()" class="text-slate-500 hover:text-white hide-on-collapse">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                    </svg>
+                </button>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="p-3 space-y-1 mt-2">
+                <script>
+                    const navItems = [
+                        { id: 'nav-dash', label: 'Dashboard', icon: 'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z', page: 'dashboard' },
+                        { id: 'nav-watch', label: 'Watchlist', icon: 'M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z', page: 'watchlist' },
+                        { id: 'nav-hist', label: 'History', icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z', page: 'history' },
+                        { id: 'nav-docs', label: 'Docs', icon: 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z', page: 'docs' },
+                        { id: 'nav-set', label: 'Settings', icon: 'M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z', page: 'settings' },
+                    ];
+                    navItems.forEach(item => {
+                        document.write(`
+                            <button onclick="navTo('${item.page}')" id="${item.id}" class="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-400 hover:text-white hover:bg-white/5 transition group relative">
+                                <svg class="w-5 h-5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="${item.icon}"></path></svg>
+                                <span class="font-medium hide-on-collapse whitespace-nowrap">${item.label}</span>
+                                <span class="absolute left-14 bg-slate-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 show-on-collapse pointer-events-none z-50 whitespace-nowrap shadow-lg border border-slate-700">${item.label}</span>
+                            </button>
+                        `);
+                    });
+                </script>
+            </nav>
+        </div>
+
+        <!-- User Profile & Limits -->
+        <div class="p-4 border-t border-border-light">
+            <!-- Limit Bar -->
+            <div class="mb-3 hide-on-collapse">
+                <div class="flex justify-between text-[10px] text-slate-400 mb-1">
+                    <span>Daily Analyses</span>
+                    <span class="text-white">4 / 5</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-brand-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <div
+                    class="w-9 h-9 rounded-full bg-slate-700 flex items-center justify-center text-xs font-bold text-white shrink-0 ring-2 ring-slate-800">
+                    TD</div>
+                <div class="hide-on-collapse overflow-hidden">
+                    <p class="text-sm font-medium text-white truncate">testingdemo3</p>
+                    <p class="text-xs text-brand-500 truncate">Pro Plan</p>
+                </div>
+            </div>
+            <!-- Expand Button -->
+            <button onclick="toggleLeft()"
+                class="w-full mt-4 text-slate-500 hover:text-white flex justify-center show-on-collapse">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </aside>
+
+    <!-- 2. MAIN CONTENT -->
+    <main class="flex-1 flex flex-col relative overflow-hidden bg-bg-main min-w-0">
+
+        <!-- HEADER -->
+        <header class="h-16 border-b border-border-light bg-bg-main flex items-center justify-between px-6 shrink-0">
+            <!-- Header Search (Hidden on Dashboard Page via JS) -->
+            <div id="header-search-container" class="opacity-0 pointer-events-none transition-opacity duration-300">
+                <div class="relative group">
+                    <svg class="absolute left-3 top-2.5 w-4 h-4 text-slate-500" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    <input type="text"
+                        class="bg-bg-card border border-border-light rounded-lg pl-10 pr-4 py-1.5 text-slate-200 focus:outline-none focus:border-brand-500 w-64 text-sm"
+                        placeholder="Search ticker..." onkeydown="if(event.key === 'Enter') navTo('analysis')">
+                </div>
+            </div>
+
+            <div class="flex items-center gap-4">
+                <!-- Analysis Count Badge -->
+                <div class="px-3 py-1 bg-brand-500/10 border border-brand-500/20 rounded-full flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-brand-500"></span>
+                    <span class="text-xs font-medium text-brand-500">4/5 Analyses Left</span>
+                </div>
+
+                <div class="w-px h-6 bg-border-light"></div>
+
+                <button onclick="toggleRight()" class="text-slate-400 hover:text-white flex items-center gap-2">
+                    <span class="text-xs hidden lg:block">Context Panel</span>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 4v16"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- PAGE CONTENT -->
+        <div id="page-container" class="flex-1 overflow-y-auto p-4 lg:p-6 scroll-smooth relative">
+
+            <!-- PAGE 1: LANDING DASHBOARD -->
+            <div id="page-dashboard"
+                class="page-section fade-in flex flex-col items-center justify-start h-full pt-12 md:pt-20">
+                <!-- Branding -->
+                <div
+                    class="w-16 h-16 bg-gradient-to-tr from-brand-600 to-indigo-600 rounded-2xl flex items-center justify-center mb-6 shadow-2xl shadow-brand-500/20 animate-bounce-slow">
+                    <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                </div>
+                <h1 class="text-3xl md:text-5xl font-bold text-white mb-3 text-center">Unlock Market Insights <span
+                        class="text-brand-500">Instantly</span></h1>
+                <p class="text-slate-400 mb-8 text-center max-w-lg">AI-powered technical analysis, sentiment scoring,
+                    and risk assessment for Indian markets.</p>
+
+                <!-- Main Search Bar -->
+                <div class="relative w-full max-w-2xl mb-12 group">
+                    <input type="text"
+                        class="hero-input w-full bg-bg-card border border-border-light rounded-xl pl-6 pr-14 py-4 text-lg text-white placeholder-slate-500 outline-none transition-all focus:border-brand-500"
+                        placeholder="Analyze a stock (e.g. RELIANCE, TCS)..."
+                        onkeydown="if(event.key === 'Enter') navTo('analysis')">
+                    <button onclick="navTo('analysis')"
+                        class="absolute right-2 top-2 bottom-2 bg-brand-600 hover:bg-brand-500 text-white px-4 rounded-lg transition">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Trending Section -->
+                <div class="w-full max-w-4xl">
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4 text-center md:text-left">
+                        ⚡ Trending in NeuroVest</h3>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <!-- Card 1 -->
+                        <div onclick="navTo('analysis')"
+                            class="bg-bg-card border border-border-light p-4 rounded-xl hover:border-brand-500/50 hover:bg-slate-800 transition cursor-pointer group">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-white group-hover:text-brand-400 transition">RELIANCE</span>
+                                <span
+                                    class="text-xs font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">+2.47%</span>
+                            </div>
+                            <div class="flex justify-between items-end text-xs text-slate-400">
+                                <span>Large Cap • Energy</span>
+                                <span>High Volatility</span>
+                            </div>
+                        </div>
+                        <!-- Card 2 -->
+                        <div
+                            class="bg-bg-card border border-border-light p-4 rounded-xl hover:border-brand-500/50 hover:bg-slate-800 transition cursor-pointer group">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-white group-hover:text-brand-400 transition">TCS</span>
+                                <span
+                                    class="text-xs font-mono text-emerald-500 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">+1.17%</span>
+                            </div>
+                            <div class="flex justify-between items-end text-xs text-slate-400">
+                                <span>Large Cap • IT</span>
+                                <span>Bullish Signal</span>
+                            </div>
+                        </div>
+                        <!-- Card 3 -->
+                        <div
+                            class="bg-bg-card border border-border-light p-4 rounded-xl hover:border-brand-500/50 hover:bg-slate-800 transition cursor-pointer group">
+                            <div class="flex justify-between items-start mb-2">
+                                <span class="font-bold text-white group-hover:text-brand-400 transition">ZOMATO</span>
+                                <span
+                                    class="text-xs font-mono text-red-500 bg-red-500/10 px-2 py-0.5 rounded border border-red-500/20">-0.85%</span>
+                            </div>
+                            <div class="flex justify-between items-end text-xs text-slate-400">
+                                <span>Mid Cap • Tech</span>
+                                <span>Consolidating</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- PAGE 2: ACTIVE ANALYSIS -->
+            <div id="page-analysis" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <!-- Stock Header -->
+                <div class="flex justify-between items-end mb-6">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                            <span
+                                class="px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-[10px] font-bold border border-slate-700">NSE</span>
+                            <span class="text-xs text-slate-500">Consumer Cyclical • Large Cap</span>
+                        </div>
+                        <h1 class="text-3xl font-bold text-white tracking-tight">Reliance Industries Ltd</h1>
+                    </div>
+                    <div class="text-right">
+                        <div class="flex items-center gap-3 justify-end">
+                            <span class="text-4xl font-mono font-bold text-white">₹1,556.00</span>
+                            <div class="flex flex-col items-end">
+                                <span
+                                    class="px-2 py-0.5 bg-emerald-500/10 text-emerald-500 rounded text-sm font-bold border border-emerald-500/20">+2.47%</span>
+                                <span class="text-[10px] text-slate-500 mt-0.5">+37.50 today</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Main Grid -->
+                <div class="grid grid-cols-12 gap-6 mb-6">
+                    <!-- Chart (Constrained Height) -->
+                    <div
+                        class="col-span-12 lg:col-span-8 bg-bg-card border border-border-light rounded-xl p-1 relative">
+                        <div class="absolute top-3 left-3 z-10 flex gap-1">
+                            <button
+                                class="px-2 py-1 bg-slate-800 text-[10px] text-white rounded border border-slate-700">1D</button>
+                            <button
+                                class="px-2 py-1 bg-transparent text-[10px] text-slate-400 hover:text-white">1W</button>
+                        </div>
+                        <div class="h-[350px] w-full bg-[#0d1321] rounded-lg overflow-hidden relative">
+                            <!-- Mock Chart SVG -->
+                            <svg class="w-full h-full" preserveAspectRatio="none">
+                                <defs>
+                                    <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                        <stop offset="0" stop-color="#0ea5e9" stop-opacity="0.3" />
+                                        <stop offset="1" stop-color="#0ea5e9" stop-opacity="0" />
+                                    </linearGradient>
+                                </defs>
+                                <path
+                                    d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60"
+                                    fill="none" stroke="#0ea5e9" stroke-width="2" />
+                                <path
+                                    d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60 V350 H0 Z"
+                                    fill="url(#chartGrad)" />
+                                <line x1="0" y1="80" x2="100%" y2="80" stroke="#1f2937" stroke-dasharray="4" />
+                                <line x1="0" y1="160" x2="100%" y2="160" stroke="#1f2937" stroke-dasharray="4" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Right Stats -->
+                    <div class="col-span-12 lg:col-span-4 flex flex-col gap-4">
+                        <div
+                            class="bg-bg-card border border-border-light rounded-xl p-5 text-center flex-1 flex flex-col justify-center">
+                            <div class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">AI Signal</div>
+                            <div class="text-4xl font-black text-white mb-2 tracking-tighter">STRONG BUY</div>
+                            <div class="w-full bg-slate-800 h-2 rounded-full mb-2 overflow-hidden">
+                                <div class="bg-brand-500 h-full w-[85%]"></div>
+                            </div>
+                            <div class="flex justify-between text-[10px] font-mono text-slate-400">
+                                <span>SELL</span><span class="text-brand-500">85% CONF</span><span>BUY</span>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3 h-32">
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">Market Cap</div>
+                                <div class="text-sm font-bold text-white mt-1">$21.06T</div>
+                            </div>
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">P/E Ratio</div>
+                                <div class="text-sm font-bold text-white mt-1">25.32</div>
+                            </div>
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">Volume</div>
+                                <div class="text-sm font-bold text-white mt-1">1.0L</div>
+                            </div>
+                            <div class="bg-bg-card border border-border-light rounded-lg p-3">
+                                <div class="text-[10px] text-slate-500 uppercase">Rank</div>
+                                <div class="text-sm font-bold text-white mt-1">#1</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tabbed Data (Everything fits here) -->
+                <div class="bg-bg-card border border-border-light rounded-xl overflow-hidden min-h-[300px]">
+                    <div class="flex border-b border-border-light bg-bg-panel overflow-x-auto">
+                        <button onclick="switchTab('tab-ai')" id="btn-tab-ai"
+                            class="px-6 py-3 text-sm font-medium text-white border-r border-border-light hover:bg-slate-800 transition tab-active">AI
+                            Analysis</button>
+                        <button onclick="switchTab('tab-tech')" id="btn-tab-tech"
+                            class="px-6 py-3 text-sm font-medium text-slate-400 border-r border-border-light hover:bg-slate-800 transition">Technical
+                            Indicators</button>
+                        <button onclick="switchTab('tab-risk')" id="btn-tab-risk"
+                            class="px-6 py-3 text-sm font-medium text-slate-400 border-r border-border-light hover:bg-slate-800 transition">Risk
+                            Factors</button>
+                        <button onclick="switchTab('tab-ref')" id="btn-tab-ref"
+                            class="px-6 py-3 text-sm font-medium text-slate-400 border-r border-border-light hover:bg-slate-800 transition">References</button>
+                    </div>
+
+                    <div class="p-6">
+                        <!-- AI Tab -->
+                        <div id="tab-ai" class="tab-content animate-fade-in">
+                            <h3 class="text-lg font-bold text-white mb-3">Executive Summary</h3>
+                            <p class="text-slate-300 leading-relaxed mb-6 max-w-4xl">
+                                Reliance Industries is currently exhibiting a <span
+                                    class="text-emerald-400 font-semibold">positive breakout structure</span> above the
+                                ₹1,550 resistance zone. Our retrieval-augmented generation (RAG) models have correlated
+                                a 30% increase in institutional buy volume with recent positive news regarding the Jio
+                                Financial listing.
+                            </p>
+                            <div class="flex gap-4">
+                                <div
+                                    class="px-3 py-1 bg-slate-800 rounded border border-slate-700 text-xs text-slate-400">
+                                    Sentiment: <span class="text-white">Bullish</span></div>
+                                <div
+                                    class="px-3 py-1 bg-slate-800 rounded border border-slate-700 text-xs text-slate-400">
+                                    Volatility: <span class="text-white">Low</span></div>
+                            </div>
+                        </div>
+
+                        <!-- Technical Tab (Hidden by default) -->
+                        <div id="tab-tech" class="tab-content hidden animate-fade-in">
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                <div class="p-4 bg-slate-900 rounded border border-slate-800">
+                                    <div class="text-slate-500 text-xs mb-1">RSI (14)</div>
+                                    <div class="text-xl font-mono text-white">62.91</div>
+                                    <div class="text-xs text-yellow-500 mt-1">Neutral</div>
+                                </div>
+                                <div class="p-4 bg-slate-900 rounded border border-slate-800">
+                                    <div class="text-slate-500 text-xs mb-1">MACD</div>
+                                    <div class="text-xl font-mono text-white">-4.10</div>
+                                    <div class="text-xs text-red-500 mt-1">Bearish Divergence</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Risk Tab -->
+                        <div id="tab-risk" class="tab-content hidden animate-fade-in">
+                            <div class="space-y-3 max-w-2xl">
+                                <div
+                                    class="flex items-start gap-3 p-3 bg-red-500/5 border border-red-500/10 rounded-lg">
+                                    <svg class="w-5 h-5 text-red-500 shrink-0" fill="none" viewBox="0 0 24 24"
+                                        stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                            d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                    </svg>
+                                    <div>
+                                        <h4 class="text-white font-medium text-sm">Crude Oil Volatility</h4>
+                                        <p class="text-slate-400 text-xs">High fluctuation in crude prices.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Ref Tab -->
+                        <div id="tab-ref" class="tab-content hidden animate-fade-in">
+                            <ul class="space-y-2 max-w-2xl">
+                                <li
+                                    class="flex justify-between items-center p-3 hover:bg-slate-800 rounded cursor-pointer group">
+                                    <span class="text-sm text-white group-hover:text-brand-400">MoneyControl: Retail arm
+                                        expansion...</span>
+                                    <span class="text-xs text-slate-500">2h ago</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- OTHER PAGES (Hidden) -->
+            <div id="page-watchlist" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold text-white mb-6">Watchlist</h2>
+                <div class="text-slate-500">Watchlist content...</div>
+            </div>
+            <div id="page-history" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold text-white mb-6">History</h2>
+                <div class="text-slate-500">History content...</div>
+            </div>
+            <div id="page-docs" class="page-section hidden fade-in max-w-7xl mx-auto">
+                <h2 class="text-2xl font-bold text-white mb-6">Docs</h2>
+                <div class="text-slate-500">Documentation content...</div>
+            </div>
+
+            <!-- SETTINGS PAGE -->
+            <div id="page-settings" class="page-section hidden fade-in max-w-5xl mx-auto">
+                <div class="flex items-center gap-2 mb-6 text-slate-400 cursor-pointer hover:text-white"
+                    onclick="navTo('dashboard')">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                    </svg>
+                    <span>Back to Dashboard</span>
+                </div>
+                <h2 class="text-3xl font-bold text-white mb-6">Settings</h2>
+                <div
+                    class="bg-bg-card border border-border-light rounded-xl overflow-hidden min-h-[500px] flex flex-col md:flex-row">
+                    <div
+                        class="w-full md:w-64 bg-bg-panel border-r border-border-light p-2 flex flex-row md:flex-col overflow-x-auto">
+                        <button onclick="settingTab('set-profile')" id="btn-set-profile"
+                            class="text-left px-4 py-3 text-sm font-medium text-white bg-slate-800/50 border-l-2 border-brand-500 md:border-l-2 md:border-b-0 border-b-2 setting-btn">Profile</button>
+                        <button onclick="settingTab('set-sec')" id="btn-set-sec"
+                            class="text-left px-4 py-3 text-sm font-medium text-slate-400 hover:text-white hover:bg-slate-800/50 border-l-2 border-transparent md:border-l-2 md:border-b-0 border-b-2 setting-btn">Security</button>
+                    </div>
+                    <div class="flex-1 p-8">
+                        <div id="set-profile" class="setting-content">
+                            <h3 class="text-xl font-bold text-white mb-6">Profile Information</h3>
+                            <div class="space-y-4 max-w-lg">
+                                <div><label class="block text-xs font-medium text-slate-400 mb-1.5">Email</label><input
+                                        type="text" value="testingdemo3@neurovest.com" disabled
+                                        class="w-full bg-slate-900 border border-border-light rounded-lg px-3 py-2.5 text-slate-400 cursor-not-allowed">
+                                </div>
+                            </div>
+                        </div>
+                        <div id="set-sec" class="setting-content hidden">
+                            <h3 class="text-xl font-bold text-white mb-6">Security</h3>
+                            <p class="text-slate-400">Session management...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 3. RIGHT SIDEBAR (Collapsible) -->
+    <aside id="right-sidebar"
+        class="w-72 bg-bg-panel border-l border-border-light hidden xl:flex flex-col shrink-0 sidebar-transition z-40">
+        <div class="h-16 flex items-center justify-between px-4 border-b border-border-light shrink-0">
+            <span class="font-bold text-slate-300 hide-on-collapse">Market Context</span>
+            <button onclick="toggleRight()" class="text-slate-500 hover:text-white"><svg class="w-5 h-5" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 5l7 7-7 7M5 5l7 7-7 7">
+                    </path>
+                </svg></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-6 hide-on-collapse">
+            <div>
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Saved (1/10)</h4>
+                <div class="p-3 rounded-lg bg-bg-card border border-border-light cursor-pointer hover:border-slate-500">
+                    <span class="font-bold text-white">RELIANCE</span> <span
+                        class="text-xs text-emerald-500">Bullish</span></div>
+            </div>
+            <div>
+                <h4 class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Trending</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between items-center group cursor-pointer"><span>TCS</span> <span
+                            class="text-xs text-emerald-500">+1.17%</span></div>
+                    <div class="flex justify-between items-center group cursor-pointer"><span>HDFCBANK</span> <span
+                            class="text-xs text-emerald-500">+3.22%</span></div>
+                </div>
+            </div>
+        </div>
+        <div class="show-on-collapse h-full w-full flex items-center justify-center"><span
+                class="text-slate-500 -rotate-90 text-xs font-bold tracking-widest whitespace-nowrap">CONTEXT</span>
+        </div>
+    </aside>
+
+    <script>
+        // Navigation Logic
+        function navTo(pageId) {
+            document.querySelectorAll('.page-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById('page-' + pageId).classList.remove('hidden');
+
+            // Header search visibility: Show everywhere EXCEPT dashboard
+            const headerSearch = document.getElementById('header-search-container');
+            if (pageId === 'dashboard') {
+                headerSearch.classList.remove('opacity-100', 'pointer-events-auto');
+                headerSearch.classList.add('opacity-0', 'pointer-events-none');
+            } else {
+                headerSearch.classList.remove('opacity-0', 'pointer-events-none');
+                headerSearch.classList.add('opacity-100', 'pointer-events-auto');
+            }
+
+            // Highlight Sidebar
+            document.querySelectorAll('nav button').forEach(el => { el.classList.remove('bg-white/5', 'text-white'); el.classList.add('text-slate-400'); });
+            const activeBtn = document.getElementById('nav-' + (pageId === 'dashboard' ? 'dash' : pageId.substring(0, 4)));
+            if (activeBtn) { activeBtn.classList.add('bg-white/5', 'text-white'); activeBtn.classList.remove('text-slate-400'); }
+        }
+
+        // Collapse Logic
+        function toggleLeft() { const sb = document.getElementById('left-sidebar'); sb.classList.toggle('w-64'); sb.classList.toggle('w-16'); sb.classList.toggle('collapsed'); }
+        function toggleRight() { const sb = document.getElementById('right-sidebar'); sb.classList.toggle('w-72'); sb.classList.toggle('w-8'); sb.classList.toggle('collapsed'); }
+
+        // Tab Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            const btns = ['btn-tab-ai', 'btn-tab-tech', 'btn-tab-risk', 'btn-tab-ref'];
+            btns.forEach(id => { document.getElementById(id).classList.remove('tab-active', 'text-white'); document.getElementById(id).classList.add('text-slate-400'); });
+            document.getElementById('btn-' + tabId).classList.add('tab-active', 'text-white');
+            document.getElementById('btn-' + tabId).classList.remove('text-slate-400');
+        }
+
+        function settingTab(tabId) {
+            document.querySelectorAll('.setting-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(tabId).classList.remove('hidden');
+            document.querySelectorAll('.setting-btn').forEach(el => { el.classList.remove('text-white', 'bg-slate-800/50', 'border-brand-500'); el.classList.add('text-slate-400', 'border-transparent'); });
+            document.getElementById('btn-' + tabId).classList.add('text-white', 'bg-slate-800/50', 'border-brand-500');
+            document.getElementById('btn-' + tabId).classList.remove('text-slate-400', 'border-transparent');
+        }
+
+        navTo('dashboard');
+    </script>
+</body>
+
+</html>

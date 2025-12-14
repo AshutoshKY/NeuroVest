@@ -41,7 +41,7 @@ class WebScraper:
         try:
             # Search for news using text search with backend='html' to avoid rate limits
             # We append "stock news" to the query to ensure relevance
-            results = self.ddgs.text(f"{query}", region="in-en", backend="html", max_results=max_results)
+            results = list(self.ddgs.text(f"{query}", region="in-en", backend="html", max_results=max_results))
             
             if not results:
                 logger.warning("⚠️  Web search returned no results", extra={

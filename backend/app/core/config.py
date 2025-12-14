@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings
 from typing import Optional
+import os
 
 
 class Settings(BaseSettings):
@@ -33,7 +34,15 @@ class Settings(BaseSettings):
     
     # Data Storage
     DATA_DIR: str = "/app/data"
-    CHROMA_DB_PATH: str = "/app/data/chroma_db"
+    CHROMA_DB_PATH: str = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+    
+    # ChromaDB Dynamic Temporal Retrieval Configuration
+    TEMPORAL_DECAY_LAMBDA: float = 0.05  # Decay rate for temporal scoring
+    TEMPORAL_WEIGHT: float = 0.6  # Weight for recency in combined score  
+    QUALITY_WEIGHT: float = 0.4  # Weight for quality in combined score
+    MAX_PER_WEEK: int = 2  # Max analyses per week for temporal diversity
+    TARGET_ANALYSES: int = 5  # Number of historical analyses to return
+    DAYS_BACK: int = 45  # How far back to look for historical analyses
     
     # Stock API Configuration
     STOCK_API_BASE_URL: str = "https://indian-stock-exchange-api.p.rapidapi.com"
@@ -56,6 +65,10 @@ class Settings(BaseSettings):
     
     # Rate Limiting Configuration
     RATE_LIMIT_ENABLED: bool = True  # Set to False to disable rate limiting
+    
+    # Smart API Orchestrator Feature Flag
+    USE_SMART_ORCHESTRATOR: bool = False  # Default: OFF (safe deployment)
+    SMART_ORCHESTRATOR_TIMEOUT: float = 5.0  # Parallel execution timeout (seconds)
     
     @property
     def database_url(self) -> str:

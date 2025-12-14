@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Glass Dock Concept</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Space Grotesk', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { bg: '#050505', glass: 'rgba(20, 20, 20, 0.6)', accent: '#00f0ff' },
+                    animation: { 'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite' }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #050505;
+            color: #fff;
+            background-image: radial-gradient(circle at 50% 0%, #1a1a2e 0%, #050505 60%);
+        }
+
+        .glass-panel {
+            background: rgba(30, 30, 30, 0.3);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+        }
+
+        .neon-text {
+            text-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+        }
+
+        .dock-item:hover {
+            transform: translateY(-5px) scale(1.1);
+        }
+
+        /* Scrollbar */
+        ::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 2px;
+        }
+    </style>
+</head>
+
+<body class="h-screen overflow-hidden flex flex-col relative">
+
+    <!-- TOP HEADER (Minimal) -->
+    <header class="h-14 px-6 flex items-center justify-between border-b border-white/5 z-20 bg-bg/50 backdrop-blur">
+        <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+            <span class="font-bold tracking-widest text-lg">NEUROVEST <span class="text-accent text-xs">AI</span></span>
+        </div>
+        <div class="w-1/3">
+            <input type="text"
+                class="w-full bg-white/5 border border-white/10 rounded-full px-4 py-1.5 text-sm focus:border-accent outline-none transition"
+                placeholder="Search Ticker...">
+        </div>
+        <div class="flex items-center gap-4">
+            <span class="text-xs text-gray-400">Market Status: <span class="text-green-400">OPEN</span></span>
+            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-accent to-blue-600"></div>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT (Grid) -->
+    <main class="flex-1 p-4 grid grid-cols-12 gap-4 overflow-hidden pb-24">
+
+        <!-- COL 1: Chart & Core Data (8 Cols) -->
+        <div class="col-span-12 lg:col-span-8 flex flex-col gap-4 h-full overflow-y-auto pr-2">
+            <!-- Stock Info -->
+            <div class="flex justify-between items-end">
+                <h1 class="text-4xl font-bold">RELIANCE <span class="text-base font-normal text-gray-500">NSE</span>
+                </h1>
+                <div class="text-right">
+                    <div class="text-3xl font-mono text-accent neon-text">₹1,556.00</div>
+                    <div class="text-green-400 text-sm flex justify-end items-center gap-1">
+                        <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                        </svg>
+                        +2.47% (Intraday)
+                    </div>
+                </div>
+            </div>
+
+            <!-- Main Vis (Chart) -->
+            <div class="glass-panel rounded-2xl p-1 flex-1 min-h-[400px] relative group">
+                <!-- Floating Chart Controls -->
+                <div class="absolute top-4 left-4 flex gap-2 z-10">
+                    <button class="px-3 py-1 bg-white/10 rounded text-xs hover:bg-white/20">Candles</button>
+                    <button class="px-3 py-1 bg-white/10 rounded text-xs hover:bg-white/20">Line</button>
+                </div>
+                <!-- Mock Chart -->
+                <svg class="w-full h-full p-6" preserveAspectRatio="none">
+                    <!-- Grid -->
+                    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1" />
+                    </pattern>
+                    <rect width="100%" height="100%" fill="url(#grid)" />
+                    <!-- Line -->
+                    <path d="M0,350 Q150,300 300,320 T600,200 T900,100 T1200,50" fill="none" stroke="#00f0ff"
+                        stroke-width="2" class="drop-shadow-[0_0_10px_rgba(0,240,255,0.5)]" />
+                    <!-- Area -->
+                    <path d="M0,350 Q150,300 300,320 T600,200 T900,100 T1200,50 V500 H0 Z" fill="url(#grad)"
+                        opacity="0.1" />
+                    <defs>
+                        <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0" stop-color="#00f0ff" />
+                            <stop offset="1" stop-color="transparent" />
+                        </linearGradient>
+                    </defs>
+                </svg>
+            </div>
+
+            <!-- Data Modules (AI & Indicators) -->
+            <div class="grid grid-cols-2 gap-4">
+                <div class="glass-panel rounded-2xl p-5 border-l-2 border-accent">
+                    <h3 class="text-accent text-sm font-bold mb-2 uppercase tracking-widest">AI Prediction</h3>
+                    <p class="text-sm text-gray-300 leading-relaxed">
+                        High probability of <strong class="text-white">Trend Continuation</strong>. Sentiment analysis
+                        of recent news regarding the Jio merger suggests positive institutional inflow.
+                    </p>
+                    <div class="mt-3 flex gap-2">
+                        <span class="text-xs border border-green-500/30 text-green-400 px-2 py-1 rounded">Bullish</span>
+                        <span class="text-xs border border-white/10 text-gray-400 px-2 py-1 rounded">Conf: 85%</span>
+                    </div>
+                </div>
+                <div class="glass-panel rounded-2xl p-5">
+                    <h3 class="text-gray-400 text-sm font-bold mb-2 uppercase tracking-widest">Key Levels</h3>
+                    <div class="grid grid-cols-2 gap-y-2 text-sm">
+                        <span class="text-gray-500">Support 1</span> <span class="text-right font-mono">₹1,520</span>
+                        <span class="text-gray-500">Resistance 1</span> <span class="text-right font-mono">₹1,585</span>
+                        <span class="text-gray-500">RSI (14)</span> <span
+                            class="text-right font-mono text-yellow-400">62.0 (Neutral)</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- COL 2: Context Sidebar (4 Cols) -->
+        <div class="col-span-12 lg:col-span-4 flex flex-col gap-4 h-full overflow-y-auto">
+            <!-- Sentiment Gauge -->
+            <div class="glass-panel rounded-2xl p-6 text-center">
+                <div class="text-xs text-gray-500 uppercase mb-2">Market Sentiment</div>
+                <div class="text-2xl font-bold mb-1">Greed</div>
+                <div class="w-full h-2 bg-gray-800 rounded-full overflow-hidden">
+                    <div class="h-full bg-gradient-to-r from-green-400 to-accent w-[75%]"></div>
+                </div>
+            </div>
+
+            <!-- References / News -->
+            <div class="glass-panel rounded-2xl p-0 overflow-hidden flex-1">
+                <div class="p-4 border-b border-white/5 font-bold text-sm">Latest References</div>
+                <div class="p-4 space-y-4">
+                    <div class="flex gap-3 items-start hover:bg-white/5 p-2 rounded transition cursor-pointer">
+                        <div class="w-1 h-full bg-blue-500 rounded"></div>
+                        <div>
+                            <div class="text-xs text-blue-400 mb-0.5">MoneyControl • 2h ago</div>
+                            <p class="text-xs text-gray-300">Reliance retail arm plans $2B expansion...</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 items-start hover:bg-white/5 p-2 rounded transition cursor-pointer">
+                        <div class="w-1 h-full bg-purple-500 rounded"></div>
+                        <div>
+                            <div class="text-xs text-purple-400 mb-0.5">Bloomberg • 4h ago</div>
+                            <p class="text-xs text-gray-300">Oil prices dip slightly, affecting energy sector...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Risk Factors -->
+            <div class="glass-panel rounded-2xl p-4">
+                <div class="text-xs font-bold text-red-400 mb-2 uppercase">Risk Factors</div>
+                <ul class="list-disc list-inside text-xs text-gray-400 space-y-1">
+                    <li>Global crude volatility</li>
+                    <li>Regulatory telecom shifts</li>
+                </ul>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- BOTTOM FLOATING DOCK (The Requested Footer) -->
+    <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <div class="glass-panel px-6 py-3 rounded-2xl flex items-center gap-6 shadow-2xl border border-white/10">
+            <button class="dock-item flex flex-col items-center gap-1 group">
+                <div
+                    class="p-2 bg-accent/10 rounded-xl text-accent group-hover:bg-accent group-hover:text-black transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z">
+                        </path>
+                    </svg>
+                </div>
+                <span class="text-[10px] text-gray-400 group-hover:text-white">Dash</span>
+            </button>
+            <button class="dock-item flex flex-col items-center gap-1 group">
+                <div class="p-2 hover:bg-white/10 rounded-xl transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <span class="text-[10px] text-gray-400 group-hover:text-white">History</span>
+            </button>
+            <div class="w-px h-8 bg-white/10"></div> <!-- Divider -->
+            <button class="dock-item flex flex-col items-center gap-1 group">
+                <div class="p-2 hover:bg-white/10 rounded-xl transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <span class="text-[10px] text-gray-400 group-hover:text-white">Watch</span>
+            </button>
+            <button class="dock-item flex flex-col items-center gap-1 group">
+                <div class="p-2 hover:bg-white/10 rounded-xl transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                        </path>
+                    </svg>
+                </div>
+                <span class="text-[10px] text-gray-400 group-hover:text-white">Docs</span>
+            </button>
+            <button class="dock-item flex flex-col items-center gap-1 group">
+                <div class="p-2 hover:bg-white/10 rounded-xl transition">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z">
+                        </path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                    </svg>
+                </div>
+                <span class="text-[10px] text-gray-400 group-hover:text-white">Settings</span>
+            </button>
+        </div>
+    </div>
+
+</body>
+
+</html>

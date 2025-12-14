@@ -48,6 +48,10 @@ class StockAnalysis(BaseModel):
     day_low: Optional[float] = 0.0
     volume: Optional[int] = 0
     historical_data: Optional[Dict[str, Any]] = {}
+    
+    # NEW: Structured data fields
+    analysis_structured: Optional[Dict[str, Any]] = None
+    prediction_structured: Optional[Dict[str, Any]] = None
 
 
 import json
@@ -627,7 +631,7 @@ async def get_stock_analysis(
 
         # Generate analysis using RAG
         rag_query = f"Analyze the current market sentiment, risks, and growth potential for {company_name} ({ticker}) based on recent news."
-        analysis = rag_service.generate_analysis(rag_query, ticker=ticker)
+        analysis = await rag_service.generate_analysis(rag_query, ticker=ticker)
         
         # Add ticker to response
         analysis["ticker"] = ticker
@@ -816,7 +820,7 @@ async def get_stock_analysis_with_steps(ticker: str):
         
         rag_query = f"Analyze the current market sentiment, risks, and growth potential for {company_name} ({ticker}) based on recent news."
         
-        for step_type, data in rag_service.generate_analysis_with_steps(rag_query, ticker=ticker):
+        async for step_type, data in rag_service.generate_analysis_with_steps(rag_query, ticker=ticker):
             if step_type == "step":
                 thinking_steps.append(data)
             elif step_type == "final":
@@ -980,7 +984,7 @@ async def stream_stock_analysis(
             # Generate analysis using RAG with progressive steps
             rag_query = f"Analyze the current market sentiment, risks, and growth potential for {company_name} ({ticker}) based on recent news."
             
-            for step_type, data in rag_service.generate_analysis_with_steps(rag_query, ticker=ticker, stock_data=stock_data):
+            async for step_type, data in rag_service.generate_analysis_with_steps(rag_query, ticker=ticker, stock_data=stock_data):
                 if step_type == "step":
                     # Stream thinking step
                     step_event = {"type": "step", "step": data}

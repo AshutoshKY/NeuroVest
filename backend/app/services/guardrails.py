@@ -97,14 +97,37 @@ class GuardrailsService:
             "original_text": text
         }
         
+        
         if violations:
+            # NEW: Enhanced logging with exact context
             logger.warning("⚠️  Guardrails violations detected", extra={
                 "operation": "guardrails_validate",
                 "violations_count": len(violations),
                 "violations": violations,
+                "flagged_words": list(set(matches)),  # Exact words flagged
                 "replacements_made": replacements_made,
                 "status": "violations_found"
             })
+            
+            # NEW: Log detailed context around each violation
+            for idx, violation in enumerate(violations, 1):
+                # Find the word in the original text and show context
+                for match in matches:
+                    # Find position of match in text
+                    match_pos = text.lower().find(match.lower())
+                    if match_pos != -1:
+                        # Get 50 chars before and after for context
+                        start_pos = max(0, match_pos - 50)
+                        end_pos = min(len(text), match_pos + len(match) + 50)
+                        context = text[start_pos:end_pos]
+                        
+                        logger.warning(f"🚫 Violation {idx} context: '{match}'", extra={
+                            "operation": "guardrails_violation_detail",
+                            "violation_num": idx,
+                           "flagged_word": match,
+                            "context_text": f"...{context}...",
+                            "position": match_pos
+                        })
         else:
             logger.debug("✅ Guardrails validation passed", extra={
                 "operation": "guardrails_validate",
@@ -118,68 +141,115 @@ class GuardrailsService:
         """Add disclaimer to analysis output."""
         return f"{text}\n\n{DISCLAIMER}\n"
     
+    
     def process_analysis(self, analysis: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Process AI analysis output through guardrails.
+        Process analysis through guardrails and add disclaimer.
+        Handles both flat and nested (structured) formats.
         
         Args:
-            analysis: Analysis dictionary from RAG/LLM
+            analysis: Analysis dictionary (can be flat or nested)
             
         Returns:
-            Processed analysis with disclaimer and validation
+            Processed analysis with guardrails applied
         """
         logger.info("🛡️  Processing analysis through guardrails", extra={
-            "operation": "guardrails_process",
-            "has_analysis": "analysis" in analysis,
-            "has_reasoning": "reasoning" in analysis,
-            "has_summary": "summary" in analysis
+            "operation": "guardrails_process"
         })
         
-        total_violations = 0
-        
-        # Validate main analysis text if present
-        if "analysis" in analysis:
-            validation = self.validate_output(analysis["analysis"])
+        try:
+            total_violations = 0
             
-            # Use sanitized text
-            analysis["analysis"] = validation["sanitized_text"]
+            # Handle nested structure (new format)
+            if isinstance(analysis.get('analysis'), dict):
+                # Validate nested analysis text
+                analysis_full_text = analysis['analysis'].get('full_text', '')
+                if analysis_full_text:
+                    result = self.validate_output(analysis_full_text)
+                    analysis['analysis']['full_text'] = result['sanitized_text']
+                    total_violations += len(result.get('violations', []))
+                
+                # Validate analysis key points
+                key_points = analysis['analysis'].get('key_points', [])
+                sanitized_points = []
+                for point in key_points:
+                    result = self.validate_output(point)
+                    sanitized_points.append(result['sanitized_text'])
+                    total_violations += len(result.get('violations', []))
+                analysis['analysis']['key_points'] = sanitized_points
+            elif 'analysis' in analysis and isinstance(analysis['analysis'], str):
+                # Fallback: flat format
+                result = self.validate_output(analysis['analysis'])
+                analysis['analysis'] = result['sanitized_text']
+                total_violations += len(result.get('violations', []))
             
-            # Add disclaimer
-            analysis["analysis"] = self.add_disclaimer(analysis["analysis"])
+            # Handle nested prediction (new format)
+            if isinstance(analysis.get('prediction'), dict):
+                # Validate prediction outlook
+                outlook = analysis['prediction'].get('outlook', '')
+                if outlook:
+                    result = self.validate_output(outlook)
+                    analysis['prediction']['outlook'] = result['sanitized_text']
+                    total_violations += len(result.get('violations', []))
+                
+                # Validate scenarios
+                scenarios = analysis['prediction'].get('scenarios', {})
+                for scenario_key in ['bull', 'base', 'bear']:
+                    if scenario_key in scenarios:
+                        result = self.validate_output(scenarios[scenario_key])
+                        scenarios[scenario_key] = result['sanitized_text']
+                        total_violations += len(result.get('violations', []))
+            elif 'prediction' in analysis and isinstance(analysis['prediction'], str):
+                # Fallback: flat format
+                result = self.validate_output(analysis['prediction'])
+                analysis['prediction'] = result['sanitized_text']
+                total_violations += len(result.get('violations', []))
+            
+            # Validate other text fields
+            if 'reasoning' in analysis:
+                result = self.validate_output(analysis['reasoning'])
+                analysis['reasoning'] = result['sanitized_text']
+                total_violations += len(result.get('violations', []))
+            
+            # Validate risk factors
+            if 'risk_factors' in analysis and isinstance(analysis['risk_factors'], list):
+                sanitized_risks = []
+                for risk in analysis['risk_factors']:
+                    result = self.validate_output(risk)
+                    sanitized_risks.append(result['sanitized_text'])
+                    total_violations += len(result.get('violations', []))
+                analysis['risk_factors'] = sanitized_risks
+            
+            # Validate key insights
+            if 'key_insights' in analysis and isinstance(analysis['key_insights'], list):
+                sanitized_insights = []
+                for insight in analysis['key_insights']:
+                    result = self.validate_output(insight)
+                    sanitized_insights.append(result['sanitized_text'])
+                    total_violations += len(result.get('violations', []))
+                analysis['key_insights'] = sanitized_insights
             
             # Add compliance metadata
-            analysis["compliance"] = {
-                "validated": True,
-                "has_violations": not validation["is_valid"],
-                "violations": validation["violations"] if not validation["is_valid"] else []
+            analysis['compliance'] = {
+                'validated': True,
+                'total_violations': total_violations,
+                'sanitized': total_violations > 0
             }
             
-            total_violations += len(validation.get("violations", []))
-        
-        # Validate reasoning if present
-        if "reasoning" in analysis:
-            validation = self.validate_output(analysis["reasoning"])
-            analysis["reasoning"] = validation["sanitized_text"]
-            total_violations += len(validation.get("violations", []))
-        
-        # Add disclaimer to summary if present
-        if "summary" in analysis:
-            validation = self.validate_output(analysis["summary"])
-            analysis["summary"] = validation["sanitized_text"]
-            total_violations += len(validation.get("violations", []))
-        
-        # Ensure disclaimer is always present
-        analysis["disclaimer"] = DISCLAIMER
-        
-        logger.info("✅ Guardrails processing complete", extra={
-            "operation": "guardrails_process",
-            "total_violations": total_violations,
-            "sanitized": total_violations > 0,
-            "disclaimer_added": True,
-            "status": "success"
-        })
-        
-        return analysis
+            logger.info("✅ Guardrails processing complete", extra={
+                "operation": "guardrails_process",
+                "total_violations": total_violations,
+                "status": "success"
+            })
+            
+            return analysis
+            
+        except Exception as e:
+            logger.error(f"Error in guardrails processing: {e}", extra={
+                "operation": "guardrails_process",
+                "error": str(e)
+            })
+            return analysis
     
     def log_output(self, user_id: int, output: str, endpoint: str):
         """

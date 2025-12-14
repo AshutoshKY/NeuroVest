@@ -202,7 +202,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 from app.api import (
     auth, health, stocks, sentiment, news, admin, tracking, user, user_stocks,
-    admin_management, admin_health, admin_traffic, admin_history, admin_cache, device, security
+    admin_management, admin_health, admin_traffic, admin_history, admin_cache, device, security, admin_orchestrator
 )
 
 # Include routers
@@ -225,6 +225,7 @@ app.include_router(admin_health.router)
 app.include_router(admin_traffic.router)
 app.include_router(admin_history.router)
 app.include_router(admin_cache.router)
+app.include_router(admin_orchestrator.router)  # Smart Orchestrator Admin
 
 # WebSocket endpoint for real-time analysis
 from app.api.stocks_websocket import websocket_endpoint

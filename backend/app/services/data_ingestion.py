@@ -321,52 +321,55 @@ class DataIngestionService:
         
         # Construct search query
         search_term = f"{company_name} {ticker}" if company_name else ticker
-        query = f"{search_term} stock news"
         
-        # --- STRATEGY 1: Scraper V2 (DuckDuckGo Web Search) ---
+        # --- STRATEGY 1: Intelligent News Service (RSS-First with Fallback) ---
         try:
-            logger.info("🕵️ Trying Web Search scraper (V2)", extra={
+            logger.info("🎯 Trying Intelligent News Service (RSS-first)", extra={
                 "operation": "ingest_for_ticker",
                 "ticker": ticker,
-                "strategy": "web_search"
+                "strategy": "intelligent_news_service"
             })
-            from app.scrapers.web_scraper import web_scraper
+            from app.scrapers.intelligent_news_service import intelligent_news_service
             
-            # Search and scrape (runs synchronously, might block slightly but okay for now)
-            # To make it truly async, we should run in executor, but for simplicity:
-            # Request 15 results to ensure diversity (WebScraper will filter for unique domains)
-            articles = web_scraper.search_and_scrape(query, max_results=15)
+            # Get news through intelligent multi-layer system
+            # This will try: RSS → Direct Scraper → DuckDuckGo
+            articles = await intelligent_news_service.get_news(
+                ticker=ticker,
+                company_name=company_name or ticker,
+                min_articles=3,
+                max_articles=5
+            )
             
             if articles:
                 # Inject ticker context for metadata tagging
                 for article in articles:
                     article['ticker_context'] = ticker
                     
-                chunks = self.process_and_store_articles(articles, "Web Scraper V2")
-                logger.info("✅ Web Search scraper succeeded", extra={
+                chunks = self.process_and_store_articles(articles, "Intelligent News Service")
+                logger.info("✅ Intelligent News Service succeeded", extra={
                     "operation": "ingest_for_ticker",
                     "ticker": ticker,
-                    "strategy": "web_search",
+                    "strategy": "intelligent_news_service",
                     "articles_count": len(articles),
                     "chunks_count": chunks,
-                    "status": "success"
+                    "status": "success",
+                    "layers_used": intelligent_news_service._get_layers_used(articles)
                 })
                 return len(articles)
             else:
-                logger.warning("⚠️ Web Search found no articles, falling back to RSS", extra={
+                logger.warning("⚠️  Intelligent News Service found no articles, falling back to RSS", extra={
                     "operation": "ingest_for_ticker",
                     "ticker": ticker,
-                    "strategy": "web_search",
-                    "fallback": "rss"
                 })
                 
         except Exception as e:
-            logger.error("❌ Web Search scraper failed, falling back to RSS", extra={
+            logger.error(f"❌ Intelligent News Service failed: {e}", exc_info=True, extra={
                 "operation": "ingest_for_ticker",
                 "ticker": ticker,
-                "strategy": "web_search",
-                "fallback": "rss",
-                "error": str(e)
+                "strategy": "intelligent_news_service",
+                "error": str(e),
+                "error_type": type(e).__name__,
+                "fallback": "rss"
             })
 
         # --- STRATEGY 2: Scraper V1 (Google News RSS Fallback) ---
@@ -383,7 +386,7 @@ class DataIngestionService:
             config = {
                 'name': f"RSS Fallback: {ticker}",
                 'url': rss_url,
-                'max_articles': 5,
+                'max_articles': 15,  # BUG FIX: Changed from 5 to 15
                 'delay_seconds': 1
             }
             
