@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NeuroVest - Stock Analysis Dashboard</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script>
+tailwind.config = {
+theme: {
+extend: {
+fontFamily: { sans: ['Inter', 'sans-serif'] },
+colors: {
+slate: { 850: '#151e2e', 900: '#0f172a', 950: '#020617' },
+brand: { 500: '#0ea5e9', 600: '#0284c7' }
+}
+}
+}
+}
+</script>
+<style>
+body { background-color: #020617; color: #e2e8f0; }
+.glass-panel {
+background: rgba(30, 41, 59, 0.4);
+backdrop-filter: blur(12px);
+border: 1px solid rgba(255, 255, 255, 0.08);
+}
+.animate-pulse-slow { animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .7; } }
+/* Chart Line Animation */
+.chart-line {
+stroke-dasharray: 1000;
+stroke-dashoffset: 1000;
+animation: draw 2.5s ease-out forwards;
+}
+@keyframes draw { to { stroke-dashoffset: 0; } }
+</style>
+</head>
+<body class="flex h-screen overflow-hidden text-sm">
+
+<!-- 1. LEFT SIDEBAR (Navigation) -->
+<aside class="w-64 bg-slate-900 border-r border-slate-800 flex flex-col justify-between hidden md:flex">
+    <div>
+        <div class="h-16 flex items-center px-6 border-b border-slate-800">
+            <span class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-500 bg-clip-text text-transparent">NEUROVEST</span>
+        </div>
+        
+        <nav class="p-4 space-y-1">
+            <p class="px-3 text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Platform</p>
+            <a href="#" class="flex items-center gap-3 px-3 py-2 text-brand-500 bg-brand-500/10 rounded-lg">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
+                Dashboard
+            </a>
+            <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path></svg>
+                Watchlist
+            </a>
+            <a href="#" class="flex items-center gap-3 px-3 py-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                History
+            </a>
+        </nav>
+    </div>
+
+    <div class="p-4 border-t border-slate-800">
+        <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center font-bold text-xs">TD</div>
+            <div>
+                <p class="text-sm font-medium text-white">testingdemo3</p>
+                <p class="text-xs text-slate-500">Pro Plan</p>
+            </div>
+        </div>
+    </div>
+</aside>
+
+<!-- 2. MAIN CONTENT -->
+<main class="flex-1 flex flex-col overflow-hidden bg-[#020617]">
+    
+    <!-- Top Header -->
+    <header class="h-16 border-b border-slate-800 bg-[#020617]/80 backdrop-blur flex items-center justify-between px-8 z-10">
+        <!-- Search Bar -->
+        <div class="relative w-96">
+            <span class="absolute left-3 top-2.5 text-slate-500">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            </span>
+            <input type="text" placeholder="Search Reliance, TCS, INFY..." class="w-full bg-slate-900 border border-slate-700 text-white text-sm rounded-full pl-10 pr-4 py-2 focus:outline-none focus:ring-2 focus:ring-brand-500 placeholder-slate-500">
+        </div>
+        
+        <div class="flex items-center gap-4">
+            <span class="px-3 py-1 bg-green-900/30 text-green-400 text-xs rounded border border-green-800/50">Market Open</span>
+            <button class="bg-brand-600 hover:bg-brand-500 text-white px-4 py-2 rounded-lg text-xs font-medium transition shadow-lg shadow-brand-500/20">New Analysis +</button>
+        </div>
+    </header>
+
+    <!-- Scrollable Content -->
+    <div class="flex-1 overflow-y-auto p-8">
+        <div class="max-w-7xl mx-auto space-y-6">
+
+            <!-- SECTION A: STOCK HERO (Consolidated) -->
+            <div class="flex flex-col md:flex-row justify-between items-end gap-6 pb-6 border-b border-slate-800">
+                <div>
+                    <div class="flex items-center gap-3 mb-1">
+                        <span class="bg-slate-800 text-slate-300 px-2 py-0.5 rounded text-xs font-semibold">NSE: RELIANCE</span>
+                        <span class="bg-blue-900/30 text-blue-400 px-2 py-0.5 rounded text-xs border border-blue-800/50">Large Cap</span>
+                    </div>
+                    <h1 class="text-3xl font-bold text-white tracking-tight">Reliance Industries Ltd</h1>
+                </div>
+                <div class="text-right">
+                    <div class="text-5xl font-bold text-white tracking-tighter">₹1,556<span class="text-2xl text-slate-500">.00</span></div>
+                    <div class="flex items-center justify-end gap-2 mt-1">
+                        <svg class="w-4 h-4 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path></svg>
+                        <span class="text-green-400 font-medium text-lg">+2.47%</span>
+                        <span class="text-slate-500 text-sm">Today</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION B: GRID LAYOUT (The main redesign) -->
+            <div class="grid grid-cols-12 gap-6">
+
+                <!-- LEFT COLUMN (Chart & AI) - 70% Width -->
+                <div class="col-span-12 lg:col-span-8 space-y-6">
+                    
+                    <!-- Main Chart Card -->
+                    <div class="glass-panel rounded-xl p-1 shadow-2xl">
+                        <div class="bg-slate-900/50 rounded-lg p-4">
+                            <!-- Chart Controls -->
+                            <div class="flex justify-between items-center mb-4">
+                                <div class="flex space-x-1 bg-slate-800/50 rounded p-1">
+                                    <button class="px-3 py-1 text-xs text-slate-400 hover:text-white rounded">1D</button>
+                                    <button class="px-3 py-1 text-xs text-slate-400 hover:text-white rounded">5D</button>
+                                    <button class="px-3 py-1 text-xs font-semibold bg-slate-700 text-white rounded shadow">1M</button>
+                                    <button class="px-3 py-1 text-xs text-slate-400 hover:text-white rounded">6M</button>
+                                </div>
+                                <div class="flex gap-4 text-xs text-slate-400">
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-brand-500"></span> MA(50)</span>
+                                    <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-purple-500"></span> Vol</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Mock Chart Visualization -->
+                            <div class="relative h-72 w-full border-b border-l border-slate-700/50">
+                                <!-- Grid Lines -->
+                                <div class="absolute inset-0 grid grid-rows-4 gap-4 pointer-events-none">
+                                    <div class="border-t border-slate-800/50 w-full h-full"></div>
+                                    <div class="border-t border-slate-800/50 w-full h-full"></div>
+                                    <div class="border-t border-slate-800/50 w-full h-full"></div>
+                                    <div class="border-t border-slate-800/50 w-full h-full"></div>
+                                </div>
+                                <!-- The Line -->
+                                <svg class="absolute inset-0 w-full h-full" preserveAspectRatio="none">
+                                    <path d="M0,200 C50,180 100,220 150,160 C200,100 250,140 300,120 C350,100 400,110 450,80 C500,50 550,90 600,60 C650,30 700,50 800,20" 
+                                          fill="none" stroke="#0ea5e9" stroke-width="2" class="chart-line drop-shadow-[0_0_10px_rgba(14,165,233,0.3)]"/>
+                                    <path d="M0,200 C50,180 100,220 150,160 C200,100 250,140 300,120 C350,100 400,110 450,80 C500,50 550,90 600,60 C650,30 700,50 800,20 V300 H0 Z" 
+                                          fill="url(#gradient)" opacity="0.1" />
+                                    <defs>
+                                        <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                                            <stop offset="0%" style="stop-color:#0ea5e9;stop-opacity:1" />
+                                            <stop offset="100%" style="stop-color:#0ea5e9;stop-opacity:0" />
+                                        </linearGradient>
+                                    </defs>
+                                </svg>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- AI Analysis Section -->
+                    <div class="glass-panel rounded-xl p-6 border-l-4 border-l-purple-500">
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-lg font-semibold text-white flex items-center gap-2">
+                                <svg class="w-5 h-5 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                                NeuroVest AI Analysis
+                            </h3>
+                            <span class="text-xs text-slate-400">Generated 2 mins ago</span>
+                        </div>
+                        <p class="text-slate-300 leading-relaxed mb-4">
+                            Reliance is currently showing <span class="text-green-400 font-semibold">positive momentum</span> backed by strong volume. Our AI detects a breakout pattern forming above ₹1,550 levels. However, caution is advised as RSI approaches overbought territory.
+                        </p>
+                        <div class="flex gap-2">
+                            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">Sentiment: Neutral</span>
+                            <span class="px-2 py-1 bg-slate-800 rounded text-xs text-slate-400">Volatility: Low</span>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- RIGHT COLUMN (Stats & Indicators) - 30% Width -->
+                <div class="col-span-12 lg:col-span-4 space-y-6">
+                    
+                    <!-- Prediction Card -->
+                    <div class="glass-panel rounded-xl p-6 text-center relative overflow-hidden group">
+                        <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent opacity-50"></div>
+                        <h3 class="text-sm font-medium text-slate-400 uppercase tracking-wide">AI Confidence</h3>
+                        <div class="text-4xl font-bold text-white mt-2 mb-1">Buy</div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-3 overflow-hidden">
+                            <div class="bg-green-500 h-full rounded-full w-[72%] shadow-[0_0_10px_rgba(34,197,94,0.5)]"></div>
+                        </div>
+                        <p class="text-right text-xs text-green-400 mt-1">72% Confidence</p>
+                    </div>
+
+                    <!-- Technical Indicators (Clean List) -->
+                    <div class="glass-panel rounded-xl p-0 overflow-hidden">
+                        <div class="px-5 py-3 border-b border-slate-800 font-medium text-white">Technical Indicators</div>
+                        
+                        <!-- RSI -->
+                        <div class="p-4 border-b border-slate-800/50">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">RSI (14)</span>
+                                <span class="text-white font-mono">62.9</span>
+                            </div>
+                            <div class="w-full bg-slate-800 h-1 rounded-full">
+                                <div class="bg-yellow-500 h-full rounded-full w-[62%] relative"></div>
+                            </div>
+                            <div class="text-[10px] text-yellow-500 mt-1 text-right">Neutral</div>
+                        </div>
+
+                        <!-- MACD -->
+                        <div class="p-4 border-b border-slate-800/50">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">MACD</span>
+                                <span class="text-white font-mono">15.45</span>
+                            </div>
+                            <div class="flex items-center gap-2 mt-2">
+                                <span class="px-2 py-0.5 bg-red-500/10 text-red-400 text-[10px] rounded border border-red-500/20">Bearish Crossover</span>
+                            </div>
+                        </div>
+
+                         <!-- Bollinger -->
+                         <div class="p-4">
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="text-slate-400">Bollinger</span>
+                                <span class="text-white font-mono">1573.77</span>
+                            </div>
+                            <div class="text-[10px] text-blue-400 mt-1 text-right">Approaching Upper Band</div>
+                        </div>
+                    </div>
+
+                    <!-- Market Stats Grid -->
+                    <div class="grid grid-cols-2 gap-3">
+                        <div class="glass-panel p-3 rounded-lg">
+                            <div class="text-xs text-slate-500">Market Cap</div>
+                            <div class="text-sm font-semibold text-white mt-1">$3.5T</div>
+                        </div>
+                        <div class="glass-panel p-3 rounded-lg">
+                            <div class="text-xs text-slate-500">P/E Ratio</div>
+                            <div class="text-sm font-semibold text-white mt-1">24.5</div>
+                        </div>
+                        <div class="glass-panel p-3 rounded-lg">
+                            <div class="text-xs text-slate-500">Vol (24h)</div>
+                            <div class="text-sm font-semibold text-white mt-1">12.4M</div>
+                        </div>
+                        <div class="glass-panel p-3 rounded-lg">
+                            <div class="text-xs text-slate-500">Rank</div>
+                            <div class="text-sm font-semibold text-white mt-1">#1</div>
+                        </div>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- ADD MORE DATA HERE (Suggestions) -->
+            <div class="pt-6 border-t border-slate-800">
+                <h4 class="text-white font-medium mb-4">Fundamental & News Insights</h4>
+                <div class="grid grid-cols-3 gap-6 opacity-60">
+                     <!-- Placeholders for future data -->
+                    <div class="h-32 border-2 border-dashed border-slate-800 rounded-lg flex items-center justify-center text-slate-600">
+                        + Add Revenue Chart
+                    </div>
+                    <div class="h-32 border-2 border-dashed border-slate-800 rounded-lg flex items-center justify-center text-slate-600">
+                        + Add News Feed
+                    </div>
+                    <div class="h-32 border-2 border-dashed border-slate-800 rounded-lg flex items-center justify-center text-slate-600">
+                        + Add Peer Comparison
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</main>
+
+</body>
+</html>

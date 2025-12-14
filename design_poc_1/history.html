@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - History</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { primary: { 500: '#6366f1' }, success: '#10b981' }
+                }
+            }
+        }
+    </script>
+    <style>
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans">
+
+    <!-- TOP NAV -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur fixed top-0 w-full z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Dashboard</a>
+                <a href="watchlist.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Watchlist</a>
+                <a href="history.html"
+                    class="h-full flex items-center px-4 text-primary-500 dark:text-white border-b-2 border-primary-500">History</a>
+                <a href="docs.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Docs</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-primary-600 dark:text-primary-400">4/5 Analyses Left</span>
+            </div>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-white">TD</a>
+            <button onclick="toggleDrawer()" class="text-gray-500 hover:text-white p-2"><svg class="w-6 h-6" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg></button>
+        </div>
+    </header>
+
+    <main class="flex-1 pt-16 relative overflow-y-auto p-6">
+        <div class="max-w-7xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Analysis History</h1>
+            <div
+                class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden shadow-sm">
+                <table class="w-full text-left">
+                    <thead
+                        class="bg-gray-50 dark:bg-zinc-900 border-b border-gray-200 dark:border-zinc-800 text-xs text-gray-500 uppercase font-semibold">
+                        <tr>
+                            <th class="px-6 py-4">Ticker</th>
+                            <th class="px-6 py-4">Signal</th>
+                            <th class="px-6 py-4">Confidence</th>
+                            <th class="px-6 py-4">Date</th>
+                            <th class="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-zinc-800 text-sm">
+                        <tr class="hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition">
+                            <td class="px-6 py-4 font-bold text-gray-900 dark:text-white">RELIANCE</td>
+                            <td class="px-6 py-4"><span
+                                    class="text-emerald-500 bg-emerald-500/10 px-2 py-1 rounded font-medium">Bullish</span>
+                            </td>
+                            <td class="px-6 py-4 text-gray-600 dark:text-gray-400">85%</td>
+                            <td class="px-6 py-4 text-gray-500">Dec 13, 2025</td>
+                            <td class="px-6 py-4 text-right flex justify-end gap-2">
+                                <a href="analysis.html"
+                                    class="text-primary-500 hover:text-primary-400 font-medium">View</a>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <aside id="drawer"
+        class="fixed top-16 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer closed z-50 flex flex-col shadow-2xl">
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase">Context</span>
+            <button onclick="toggleDrawer()" class="text-gray-400 hover:text-white">X</button>
+        </div>
+        <div class="p-4">
+            <div class="p-4 bg-gray-50 dark:bg-zinc-900 border dark:border-zinc-800 rounded-xl mb-4">
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-500">Daily Limit</span><span
+                        class="font-bold text-white">4/5</span></div>
+                <div class="w-full bg-gray-200 dark:bg-zinc-800 h-1.5 rounded-full">
+                    <div class="bg-primary-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        function toggleDrawer() { document.getElementById('drawer').classList.toggle('closed'); document.getElementById('drawer').classList.toggle('open'); }
+    </script>
+</body>
+
+</html>

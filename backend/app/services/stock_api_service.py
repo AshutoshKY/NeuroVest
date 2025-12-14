@@ -33,12 +33,47 @@ class StockAPIService:
         """
         Get stock data for a ticker, trying APIs in priority order.
         
+        NEW: Routes to Smart Orchestrator if feature flag enabled.
+        Otherwise uses original implementation (100% backward compatible).
+        
         Args:
             ticker: Stock ticker symbol (e.g., 'HAL', 'BEL')
             
         Returns:
             Stock data dictionary
         """
+        from app.core.config import settings
+        
+        # FEATURE FLAG: Route to Smart Orchestrator if enabled
+        if settings.USE_SMART_ORCHESTRATOR:
+            try:
+                logger.info(f"🚀 [SMART] Using Smart Orchestrator for {ticker}")
+                from app.services.smart_orchestrator import smart_orchestrator
+                return await smart_orchestrator.get_stock_data_enhanced(ticker)
+            except Exception as e:
+                logger.error(f"❌ [SMART] Smart Orchestrator failed for {ticker}, falling back to legacy: {e}")
+                # Fall through to legacy implementation below
+        
+        # Call legacy implementation
+        return await self._get_stock_data_legacy(ticker)
+    
+    async def _get_stock_data_legacy(self, ticker: str) -> Dict[str, Any]:
+        """
+        LEGACY IMPLEMENTATION - Direct API fallback chain.
+        
+        This method BYPASSES the feature flag check to prevent recursion.
+        Used by:
+        1. get_stock_data() when feature flag is OFF
+        2. Smart orchestrator for fallback scenarios
+        
+        Args:
+            ticker: Stock ticker symbol
+            
+        Returns:
+            Stock data dictionary
+        """
+        logger.debug(f"📦 [LEGACY] Using original API service for {ticker}")
+        
         # Check cache first
         cache_key = f"stock_{ticker}"
         if cache_key in self.cache:

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { primary: { 500: '#6366f1' }, success: '#10b981', danger: '#ef4444' }
+                }
+            }
+        }
+    </script>
+    <style>
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans">
+
+    <!-- TOP NAV (Same as Index) -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur fixed top-0 w-full z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Dashboard</a>
+                <a href="watchlist.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Watchlist</a>
+                <a href="history.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">History</a>
+                <a href="docs.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Docs</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-primary-600 dark:text-primary-400">4/5 Analyses Left</span>
+            </div>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-white">TD</a>
+            <button onclick="toggleDrawer()" class="text-gray-500 hover:text-white p-2"><svg class="w-6 h-6" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg></button>
+        </div>
+    </header>
+
+    <!-- CONTENT -->
+    <main class="flex-1 pt-16 relative overflow-y-auto p-4 md:p-6">
+        <div class="max-w-7xl mx-auto">
+            <!-- Header -->
+            <div
+                class="flex flex-wrap justify-between items-end mb-6 pb-6 border-b border-gray-200 dark:border-zinc-800 gap-4">
+                <div>
+                    <div class="flex items-center gap-2 mb-1">
+                        <span
+                            class="px-2 py-0.5 rounded bg-gray-100 dark:bg-zinc-800 border border-gray-200 dark:border-zinc-700 text-[10px] text-gray-500 font-bold">NSE</span>
+                        <span class="text-xs text-gray-500">Consumer Cyclical • Large Cap</span>
+                    </div>
+                    <h1 class="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white">Reliance Industries</h1>
+                </div>
+                <div class="text-right">
+                    <div class="text-3xl md:text-4xl font-mono font-bold text-gray-900 dark:text-white">₹1,556.00</div>
+                    <div class="text-emerald-500 font-medium">+37.50 (+2.47%)</div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-12 gap-6">
+                <!-- Chart -->
+                <div
+                    class="col-span-12 lg:col-span-8 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-1 relative h-[400px]">
+                    <div class="absolute top-4 left-4 flex gap-2 z-10">
+                        <button
+                            class="px-3 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white text-xs rounded border border-gray-200 dark:border-zinc-700 font-medium">1D</button>
+                        <button
+                            class="px-3 py-1 text-gray-500 hover:bg-gray-50 dark:hover:bg-zinc-800 text-xs rounded transition">1W</button>
+                    </div>
+                    <div
+                        class="w-full h-full bg-gray-50 dark:bg-[#0d0d0f] rounded-xl overflow-hidden relative flex items-center justify-center">
+                        <svg class="w-full h-full p-8" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="grad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stop-color="#6366f1" stop-opacity="0.3" />
+                                    <stop offset="1" stop-color="#6366f1" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+                            <path d="M0,300 Q200,320 400,200 T800,50" fill="none" stroke="#6366f1" stroke-width="3" />
+                            <path d="M0,300 Q200,320 400,200 T800,50 V400 H0 Z" fill="url(#grad)" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Stats -->
+                <div class="col-span-12 lg:col-span-4 flex flex-col gap-6">
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 relative flex-1 flex flex-col justify-center text-center">
+                        <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-2">NeuroVest Signal
+                        </div>
+                        <div class="text-4xl font-black text-gray-900 dark:text-white mb-2">STRONG BUY</div>
+                        <div class="w-full bg-gray-200 dark:bg-zinc-800 h-2 rounded-full mb-2 overflow-hidden">
+                            <div class="bg-primary-500 h-full w-[85%]"></div>
+                        </div>
+                        <p class="text-xs text-primary-500 font-mono">CONFIDENCE: 85%</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4 h-32">
+                        <div
+                            class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-xl p-4">
+                            <div class="text-[10px] text-gray-500 uppercase">Market Cap</div>
+                            <div class="text-sm font-bold text-gray-900 dark:text-white mt-1">$21.06T</div>
+                        </div>
+                        <div
+                            class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-xl p-4">
+                            <div class="text-[10px] text-gray-500 uppercase">Volume</div>
+                            <div class="text-sm font-bold text-gray-900 dark:text-white mt-1">1.2M</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div
+                class="mt-6 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden min-h-[300px]">
+                <div class="flex border-b border-gray-200 dark:border-zinc-800">
+                    <button onclick="tab('ai')" id="btn-ai"
+                        class="px-6 py-4 text-sm font-medium border-b-2 border-primary-500 text-gray-900 dark:text-white transition">AI
+                        Analysis</button>
+                    <button onclick="tab('tech')" id="btn-tech"
+                        class="px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-white transition">Technicals</button>
+                    <button onclick="tab('risk')" id="btn-risk"
+                        class="px-6 py-4 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-white transition">Risk</button>
+                </div>
+                <div class="p-6">
+                    <div id="tab-ai">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">Executive Summary</h3>
+                        <p class="text-gray-600 dark:text-gray-400 leading-relaxed">
+                            Reliance Industries is currently exhibiting a <span
+                                class="text-emerald-500 font-semibold">positive breakout structure</span> above the
+                            ₹1,550 resistance zone.
+                            Our retrieval-augmented generation (RAG) models have correlated a 30% increase in
+                            institutional buy volume.
+                        </p>
+                    </div>
+                    <div id="tab-tech" class="hidden">
+                        <div class="grid grid-cols-3 gap-6">
+                            <div
+                                class="p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800">
+                                <div class="text-gray-500 text-xs mb-1">RSI (14)</div>
+                                <div class="text-2xl font-mono text-white">62.91</div>
+                                <div class="text-xs text-yellow-500 mt-1">Neutral</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="tab-risk" class="hidden">
+                        <div class="flex gap-4 p-4 bg-red-500/5 border border-red-500/10 rounded-xl">
+                            <div class="text-red-500 font-bold">Crude Volatility</div>
+                            <div class="text-gray-400">High fluctuation impacting margins.</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- DRAWER (Same as index) -->
+    <aside id="drawer"
+        class="fixed top-16 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer closed z-50 flex flex-col shadow-2xl">
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase">Context</span>
+            <button onclick="toggleDrawer()" class="text-gray-400 hover:text-white">X</button>
+        </div>
+        <div class="p-4">
+            <div class="p-4 bg-gray-50 dark:bg-zinc-900 border dark:border-zinc-800 rounded-xl mb-4">
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-500">Daily Limit</span><span
+                        class="font-bold text-white">4/5</span></div>
+                <div class="w-full bg-gray-200 dark:bg-zinc-800 h-1.5 rounded-full">
+                    <div class="bg-primary-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        function toggleDrawer() { document.getElementById('drawer').classList.toggle('closed'); document.getElementById('drawer').classList.toggle('open'); }
+        function tab(id) {
+            ['ai', 'tech', 'risk'].forEach(t => document.getElementById('tab-' + t).classList.add('hidden'));
+            document.getElementById('tab-' + id).classList.remove('hidden');
+            ['btn-ai', 'btn-tech', 'btn-risk'].forEach(b => {
+                document.getElementById(b).classList.remove('border-primary-500', 'text-white');
+                document.getElementById(b).classList.add('border-transparent', 'text-gray-500');
+            });
+            document.getElementById('btn-' + id).classList.add('border-primary-500', 'text-white');
+            document.getElementById('btn-' + id).classList.remove('border-transparent', 'text-gray-500');
+        }
+    </script>
+</body>
+
+</html>

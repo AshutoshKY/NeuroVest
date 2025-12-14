@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - Settings</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { primary: { 500: '#6366f1' } }
+                }
+            }
+        }
+    </script>
+    <style>
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+
+        .setting-btn.active {
+            border-left: 3px solid #6366f1;
+            background-color: rgba(99, 102, 241, 0.1);
+            color: #6366f1;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans">
+
+    <!-- TOP NAV -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur fixed top-0 w-full z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-white transition">Dashboard</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-primary-600 dark:text-primary-400">4/5 Analyses Left</span>
+            </div>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-primary-500 border-primary-500">TD</a>
+            <button onclick="toggleDrawer()" class="text-gray-500 hover:text-white p-2"><svg class="w-6 h-6" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg></button>
+        </div>
+    </header>
+
+    <main class="flex-1 pt-16 relative overflow-y-auto p-6">
+        <div class="max-w-5xl mx-auto">
+            <h1 class="text-3xl font-bold text-gray-900 dark:text-white mb-8">Settings</h1>
+            <div
+                class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] shadow-sm">
+                <!-- Settings Nav -->
+                <div
+                    class="w-full md:w-64 bg-gray-50 dark:bg-zinc-900 border-r border-gray-200 dark:border-zinc-800 p-2 flex flex-col gap-1">
+                    <button onclick="switchSet('profile')" id="btn-set-profile"
+                        class="setting-btn active text-left px-4 py-3 text-sm font-medium text-gray-900 dark:text-white rounded transition">Profile</button>
+                    <button onclick="switchSet('security')" id="btn-set-security"
+                        class="setting-btn text-left px-4 py-3 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition">Security</button>
+                    <button onclick="switchSet('api')" id="btn-set-api"
+                        class="setting-btn text-left px-4 py-3 text-sm font-medium text-gray-500 hover:bg-gray-100 dark:hover:bg-zinc-800 rounded transition">API
+                        Keys</button>
+                </div>
+
+                <div class="flex-1 p-8">
+                    <!-- Profile -->
+                    <div id="set-profile" class="set-content">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-6">Profile Information</h3>
+                        <div class="space-y-4 max-w-md">
+                            <div>
+                                <label class="text-xs text-gray-500 block mb-2 font-semibold">Full Name</label>
+                                <input type="text" value="testingdemo3"
+                                    class="w-full bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-lg p-3 text-gray-900 dark:text-white focus:border-primary-500 outline-none">
+                            </div>
+                            <button
+                                class="bg-primary-500 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg font-medium transition mt-4">Save
+                                Changes</button>
+                        </div>
+                    </div>
+                    <!-- API -->
+                    <div id="set-api" class="set-content hidden">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white mb-4">API Configuration</h3>
+                        <div class="flex gap-2">
+                            <input type="text" value="sk_live_xxxxxxxxxxxx"
+                                class="flex-1 bg-gray-100 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-lg p-3 text-gray-500 font-mono text-sm"
+                                readonly>
+                        </div>
+                    </div>
+                    <div id="set-security" class="set-content hidden">
+                        <h3 class="text-xl font-bold text-gray-900 dark:text-white">Security</h3>
+                        <p class="text-gray-500 mt-2">Password settings...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <aside id="drawer"
+        class="fixed top-16 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer closed z-50 flex flex-col shadow-2xl">
+        <div class="p-4 border-b flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase">Context</span>
+            <button onclick="toggleDrawer()" class="text-gray-400 hover:text-white">X</button>
+        </div>
+        <div class="p-4">
+            <div class="p-4 bg-gray-50 dark:bg-zinc-900 border dark:border-zinc-800 rounded-xl mb-4">
+                <div class="flex justify-between text-xs mb-2"><span class="text-gray-500">Daily Limit</span><span
+                        class="font-bold text-white">4/5</span></div>
+                <div class="w-full bg-gray-200 dark:bg-zinc-800 h-1.5 rounded-full">
+                    <div class="bg-primary-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        function toggleDrawer() { document.getElementById('drawer').classList.toggle('closed'); document.getElementById('drawer').classList.toggle('open'); }
+        function switchSet(tabId) {
+            document.querySelectorAll('.set-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('set-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.setting-btn').forEach(el => el.classList.remove('active', 'text-gray-900', 'dark:text-white'));
+            document.getElementById('btn-set-' + tabId).classList.add('active', 'text-gray-900', 'dark:text-white');
+        }
+    </script>
+</body>
+
+</html>

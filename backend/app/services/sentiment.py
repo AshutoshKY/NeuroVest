@@ -1,56 +1,77 @@
-from openai import AzureOpenAI
-from typing import Dict, Any
+"""
+Async Sentiment Analysis Service with Parallel OpenAI Calls.
+
+Key Improvements:
+- AsyncAzureOpenAI for non-blocking API calls
+- Parallel batch processing with asyncio.gather()
+- Expected: 16s → 4s for 5 articles (4x improvement)
+- Backward compatible sync wrapper for existing code
+"""
+
+from openai import AsyncAzureOpenAI, AzureOpenAI
+from typing import Dict, Any, List
 import logging
 import json
+import asyncio
+from datetime import datetime
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
 
 class SentimentService:
-    """Service for analyzing market sentiment using OpenAI."""
+    """Service for analyzing market sentiment using OpenAI with async support."""
     
     def __init__(self):
-        """Initialize OpenAI client."""
+        """Initialize both async and sync OpenAI clients."""
+        # Async client for parallel batch processing
+        self.async_client = AsyncAzureOpenAI(
+            api_key=settings.AZURE_OPENAI_API_KEY,
+            api_version=settings.AZURE_OPENAI_API_VERSION,
+            azure_endpoint=settings.AZURE_OPENAI_ENDPOINT
+        )
+        
+        # Sync client for backward compatibility
         self.client = AzureOpenAI(
             api_key=settings.AZURE_OPENAI_API_KEY,
             api_version=settings.AZURE_OPENAI_API_VERSION,
             azure_endpoint=settings.AZURE_OPENAI_ENDPOINT
         )
+        
         self.model = settings.AZURE_OPENAI_DEPLOYMENT
     
-    def analyze_sentiment(self, text: str, ticker: str = None) -> Dict[str, Any]:
+    async def analyze_sentiment_async(self, text: str, ticker: str = None) -> Dict[str, Any]:
         """
-        Analyze sentiment of financial text.
+        Async sentiment analysis of financial text.
         
         Args:
             text: Text to analyze
             ticker: Optional ticker symbol for context
             
         Returns:
-            Dict with sentiment_score (-1 to 1), confidence (0 to 1),
-            and classification (bullish/bearish/neutral)
+            Dict with sentiment_score, confidence, classification, reasoning, key_factors
         """
         try:
             ticker_context = f" regarding {ticker}" if ticker else ""
             
-            prompt = f"""You are a financial sentiment analysis expert. Analyze the following market news text{ticker_context}.
+            # Optimized prompt (reduced tokens)
+            prompt = f"""Analyze this financial news{ticker_context}:
 
-Text: {text}
+{text}
 
-Provide a JSON response with:
-1. sentiment_score: A number from -1 (very bearish) to 1 (very bullish), with 0 being neutral.
-2. confidence: A number from 0.1 to 1.0 indicating how confident you are in this assessment based on the text's clarity and relevance. Avoid 0 unless the text is completely irrelevant.
-3. classification: One of "bullish", "bearish", or "neutral"
-4. reasoning: A brief explanation of your analysis (2-3 sentences)
-5. key_factors: A list of 2-4 key factors that influenced your sentiment assessment
+Return JSON with:
+1. sentiment_score: -1 (bearish) to 1 (bullish)
+2. confidence: 0.1-1.0
+3. classification: "bullish", "bearish", or "neutral"
+4. reasoning: 2-3 sentences
+5. key_factors: 2-4 bullet points
 
-Respond ONLY with valid JSON, no other text."""
+JSON only."""
 
-            response = self.client.chat.completions.create(
+            response = await self.async_client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a financial sentiment analysis expert. Always respond with valid JSON only."},
+                    {"role": "system", "content": "Financial sentiment analyst. JSON only."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.3,
@@ -59,44 +80,171 @@ Respond ONLY with valid JSON, no other text."""
             
             result = json.loads(response.choices[0].message.content)
             
-            # Validate and ensure all required fields
+            # Validate and clamp values
             validated_result = {
-                "sentiment_score": float(result.get("sentiment_score", 0)),
-                "confidence": float(result.get("confidence", 0)),
+                "sentiment_score": max(-1, min(1, float(result.get("sentiment_score", 0)))),
+                "confidence": max(0, min(1, float(result.get("confidence", 0)))),
                 "classification": result.get("classification", "neutral"),
                 "reasoning": result.get("reasoning", ""),
                 "key_factors": result.get("key_factors", [])
             }
             
-            # Clamp values to valid ranges
-            validated_result["sentiment_score"] = max(-1, min(1, validated_result["sentiment_score"]))
-            validated_result["confidence"] = max(0, min(1, validated_result["confidence"]))
-            
-            logger.info(f"Sentiment analysis completed: {validated_result['classification']}")
+            logger.debug(f"Sentiment: {validated_result['classification']} ({validated_result['sentiment_score']:.2f})")
             return validated_result
             
         except Exception as e:
-            logger.error(f"Error analyzing sentiment: {e}")
-            # Return neutral sentiment on error
+            logger.error(f"Async sentiment analysis error: {e}")
             return {
                 "sentiment_score": 0.0,
                 "confidence": 0.0,
                 "classification": "neutral",
-                "reasoning": "Error occurred during sentiment analysis",
+                "reasoning": "Error during analysis",
                 "key_factors": []
             }
     
-    def analyze_batch_sentiment(self, texts: list[str], ticker: str = None) -> list[Dict[str, Any]]:
-        """Analyze sentiment for multiple texts."""
+    async def analyze_batch_sentiment_async(
+        self,
+        texts: List[str],
+        ticker: str = None
+    ) -> List[Dict[str, Any]]:
+        """
+        Analyze sentiment for multiple texts IN PARALLEL.
+        
+        This is the KEY OPTIMIZATION: Uses asyncio.gather() for concurrent API calls.
+        Expected: 4x faster than sequential (16s → 4s for 5 articles).
+        
+        Args:
+            texts: List of texts to analyze
+            ticker: Optional ticker symbol
+            
+        Returns:
+            List of sentiment results
+        """
+        if not texts:
+            logger.warning("⚠️  [SENTIMENT_NO_TEXTS] No texts provided for sentiment analysis")
+            return []
+        
+        batch_start = datetime.now()
+        logger.info(f"🔄 [SENTIMENT_BATCH_START] Starting parallel sentiment for {len(texts)} articles", extra={
+            "operation": "sentiment_batch_start",
+            "article_count": len(texts),
+            "ticker": ticker,
+            "parallel_mode": True,
+            "timestamp": batch_start.isoformat()
+        })
+        
+        # Create tasks for all texts
+        tasks = [
+            self.analyze_sentiment_async(text, ticker)
+            for text in texts
+        ]
+        
+        logger.debug(f"[SENTIMENT_GATHER] Launching {len(tasks)} parallel OpenAI calls")
+        
+        # Execute all in parallel
+        results = await asyncio.gather(*tasks, return_exceptions=True)
+        
+        batch_duration = (datetime.now() - batch_start).total_seconds()
+        
+        # Handle any exceptions
+        valid_results = []
+        for idx, result in enumerate(results):
+            if isinstance(result, Exception):
+                logger.warning(f"Sentiment analysis failed for article {idx}: {result}")
+                # Add neutral sentiment for failed analysis
+                valid_results.append({
+                    "sentiment_score": 0.0,
+                    "confidence": 0.0,
+                    "classification": "neutral",
+                    "reasoning": "Analysis failed",
+                    "key_factors": []
+                })
+            else:
+                valid_results.append(result)
+        
+        logger.info(f"✅ Parallel sentiment analysis completed: {len(valid_results)} results", extra={
+            "operation": "sentiment_batch_async",
+            "article_count": len(texts),
+            "successful": len([r for r in valid_results if r['confidence'] > 0]),
+            "ticker": ticker
+        })
+        
+        return valid_results
+    
+    # ===== SYNC METHODS FOR BACKWARD COMPATIBILITY =====
+    
+    def analyze_sentiment(self, text: str, ticker: str = None) -> Dict[str, Any]:
+        """
+        Synchronous sentiment analysis (backward compatible).
+        Use analyze_sentiment_async() for better performance.
+        """
+        try:
+            ticker_context = f" regarding {ticker}" if ticker else ""
+            
+            prompt = f"""Analyze this financial news{ticker_context}:
+
+{text}
+
+Return JSON with:
+1. sentiment_score: -1 (bearish) to 1 (bullish)
+2. confidence: 0.1-1.0
+3. classification: "bullish", "bearish", or "neutral"
+4. reasoning: 2-3 sentences
+5. key_factors: 2-4 bullet points
+
+JSON only."""
+
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {"role": "system", "content": "Financial sentiment analyst. JSON only."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            
+            validated_result = {
+                "sentiment_score": max(-1, min(1, float(result.get("sentiment_score", 0)))),
+                "confidence": max(0, min(1, float(result.get("confidence", 0)))),
+                "classification": result.get("classification", "neutral"),  
+                "reasoning": result.get("reasoning", ""),
+                "key_factors": result.get("key_factors", [])
+            }
+            
+            logger.info(f"Sentiment: {validated_result['classification']}")
+            return validated_result
+            
+        except Exception as e:
+            logger.error(f"Sentiment analysis error: {e}")
+            return {
+                "sentiment_score": 0.0,
+                "confidence": 0.0,
+                "classification": "neutral",
+                "reasoning": "Error during analysis",
+                "key_factors": []
+            }
+    
+    def analyze_batch_sentiment(self, texts: List[str], ticker: str = None) -> List[Dict[str, Any]]:
+        """
+        Synchronous batch sentiment analysis (backward compatible).
+        
+        WARNING: Sequential - slow for multiple articles.
+        Consider using analyze_batch_sentiment_async() in async context.
+        """
         results = []
         for text in texts:
             result = self.analyze_sentiment(text, ticker)
             results.append(result)
         return results
     
-    def aggregate_sentiment(self, sentiment_results: list[Dict[str, Any]]) -> Dict[str, Any]:
+    # ===== AGGREGATION (UNCHANGED) =====
+    
+    def aggregate_sentiment(self, sentiment_results: List[Dict[str, Any]]) -> Dict[str, Any]:
         """
-        Aggregate multiple sentiment analyses into a single score.
+        Aggregate multiple sentiment analyses into single score.
         
         Args:
             sentiment_results: List of sentiment analysis results
@@ -108,13 +256,15 @@ Respond ONLY with valid JSON, no other text."""
             return {
                 "aggregate_score": 0.0,
                 "aggregate_classification": "neutral",
+                "classification": "neutral",
                 "total_articles": 0,
                 "bullish_count": 0,
                 "bearish_count": 0,
-                "neutral_count": 0
+                "neutral_count": 0,
+                "average_confidence": 0.0
             }
         
-        # Calculate weighted average based on confidence
+        # Weighted average by confidence
         total_weight = sum(r["confidence"] for r in sentiment_results)
         if total_weight > 0:
             weighted_score = sum(
@@ -131,20 +281,17 @@ Respond ONLY with valid JSON, no other text."""
         total = len(sentiment_results)
         
         # Determine aggregate classification
-        # Priority 1: Majority Vote (if > 50% agree)
         if bullish > total / 2:
             classification = "bullish"
         elif bearish > total / 2:
             classification = "bearish"
         elif neutral > total / 2:
-            # If majority is neutral, only override if score is strongly directional
             if weighted_score > 0.4:
                 classification = "bullish"
             elif weighted_score < -0.4:
                 classification = "bearish"
             else:
                 classification = "neutral"
-        # Priority 2: Weighted Score with reasonable thresholds
         elif weighted_score > 0.25:
             classification = "bullish"
         elif weighted_score < -0.25:
@@ -152,12 +299,12 @@ Respond ONLY with valid JSON, no other text."""
         else:
             classification = "neutral"
             
-        logger.info(f"Aggregated Sentiment: {classification} (Score: {weighted_score:.3f}, Bull: {bullish}, Bear: {bearish}, Neut: {neutral})")
+        logger.info(f"Aggregated: {classification} ({weighted_score:.3f}), Bull:{bullish} Bear:{bearish} Neut:{neutral}")
         
         return {
             "aggregate_score": round(weighted_score, 3),
             "aggregate_classification": classification,
-            "classification": classification,  # Alias for frontend compatibility
+            "classification": classification,
             "total_articles": len(sentiment_results),
             "bullish_count": bullish,
             "bearish_count": bearish,

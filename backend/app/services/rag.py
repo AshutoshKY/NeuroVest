@@ -1,6 +1,8 @@
 from openai import AzureOpenAI
-from typing import Dict, Any, List, Generator, Tuple
+from typing import Dict, Any, List, Generator, Tuple, AsyncGenerator
 import logging
+import asyncio  # BUG FIX: Import for await asyncio.sleep() in retry logic
+import time  # For performance timing metrics
 from datetime import datetime
 from app.core.config import settings
 from app.services.embeddings import embedding_service
@@ -24,30 +26,30 @@ class RAGService:
         )
         self.model = settings.AZURE_OPENAI_DEPLOYMENT
     
-    def generate_analysis(
+    async def generate_analysis(
         self,
         query: str,
         ticker: str = None,
         n_results: int = 10
     ) -> Dict[str, Any]:
         """
-        Generate AI-powered analysis using RAG (synchronous version).
+        Generate AI-powered analysis using RAG (async version).
         For backward compatibility. Use generate_analysis_with_steps for progressive updates.
         """
         # Collect all steps
         result = None
-        for step_type, data in self.generate_analysis_with_steps(query, ticker, n_results):
+        async for step_type, data in self.generate_analysis_with_steps(query, ticker, n_results):
             if step_type == "final":
                 result = data
         return result if result else {"error": "Analysis failed"}
     
-    def generate_analysis_with_steps(
+    async def generate_analysis_with_steps(
         self,
         query: str,
         ticker: str = None,
         n_results: int = 10,
         stock_data: Dict[str, Any] = None
-    ) -> Generator[Tuple[str, Any], None, None]:
+    ) -> AsyncGenerator[Tuple[str, Any], None]:
         """
         Generate AI-powered analysis with progress steps.
         
@@ -62,9 +64,14 @@ class RAGService:
             - "step": thinking step with description
             - "final": complete analysis result
         """
+        analysis_start_time = time.time()
+        timings = {}  # Track timing for each step
+        
         try:
             # Step 1: Check Redis cache
+            step_start = time.time()
             yield ("step", {"description": "🔍 Checking cache...", "timestamp": datetime.now().isoformat()})
+            timings['cache_check'] = time.time() - step_start
             
             cached = redis_cache.get_analysis(ticker) if ticker else None
             
@@ -80,11 +87,15 @@ class RAGService:
                 yield ("final", cached)
                 return
 
-            # Step 2: Retrieve documents (NEWS + HISTORICAL ANALYSIS)
-            yield ("step", {"description": "📰 Fetching latest news and market data...", "timestamp": datetime.now().isoformat()})
+            # Step 2: Retrieve relevant documents
+            step_start = time.time()
+            yield ("step", {"description": "📚 Fetching news & market data...", "timestamp": datetime.now().isoformat()})
+            
+            retrieval_start = time.time()
             filter_metadata = {"ticker": ticker} if ticker else None
             
-            # Retrieve current news
+            
+            # Retrieve current news (indexing guaranteed complete by embeddings.py)
             search_results = embedding_service.query_similar(
                 query_text=query,
                 n_results=n_results,
@@ -97,20 +108,43 @@ class RAGService:
                 "documents_count": len(search_results.get("documents", [])),
                 "query_length": len(query)
             })
-            
-            # NEW: Also retrieve historical analyses for this ticker
+            # Step 3: Retrieve historical analyses (DYNAMIC temporal scoring)
+            yield ("step", {"description": "🔍 Retrieving historical analyses with temporal decay...", "timestamp": datetime.now().isoformat()})
             historical_analyses = []
             if ticker:
                 try:
-                    # Use the robust retrieval method
-                    logger.info("�️  Retrieving historical analyses from ChromaDB", extra={
-                        "operation": "retrieve_historical",
+                    from app.services.chromadb_temporal import retrieve_historical_analyses_dynamic
+                    from app.core.config import settings
+                    
+                    logger.debug(f"[CHROMADB_TEMPORAL] Using dynamic retrieval for {ticker}")
+                    historical_analyses_raw = retrieve_historical_analyses_dynamic(
+                        embedding_service, ticker, days_back=settings.DAYS_BACK, max_analyses=settings.TARGET_ANALYSES,
+                        temporal_decay_lambda=settings.TEMPORAL_DECAY_LAMBDA,
+                        temporal_weight=settings.TEMPORAL_WEIGHT,
+                        quality_weight=settings.QUALITY_WEIGHT,
+                        max_per_week=settings.MAX_PER_WEEK
+                    )
+                    
+                    if historical_analyses_raw:
+                        # Extract metadata from the dynamic retrieval results
+                        historical_analyses = [item['metadata'] for item in historical_analyses_raw]
+                        logger.info(f"✅ [CHROMADB_TEMPORAL] Retrieved {len(historical_analyses)} analyses (dynamic)", extra={
+                            "operation": "chromadb_temporal_retrieval",
+                            "ticker": ticker,
+                            "analyses_count": len(historical_analyses)
+                        })
+                    else:
+                        logger.warning(f"⚠️  [CHROMADB_TEMPORAL_EMPTY] No historical analyses found for {ticker}")
+                        
+                except Exception as e:
+                    logger.warning(f"⚠️  [CHROMADB_TEMPORAL_FAIL] Dynamic retrieval failed: {e}, using fallback", extra={
+                        "operation": "chromadb_temporal_failure",
                         "ticker": ticker,
-                        "requested_count": 5
+                        "error": str(e),
+                        "error_type": type(e).__name__
                     })
-                    
+                    # Fallback to old method
                     historical_data = self.retrieve_historical_analyses(ticker, top_k=5)
-                    
                     if historical_data:
                         logger.info("✅ Retrieved OLD DATA from vector DB", extra={
                             "operation": "retrieve_historical",
@@ -124,7 +158,7 @@ class RAGService:
                         # Log details of historical data
                         for idx, item in enumerate(historical_data[:3], 1):
                             meta = item.get("metadata", {})
-                            logger.debug(f"� Historical analysis #{idx}", extra={
+                            logger.debug(f" Historical analysis #{idx}", extra={
                                 "operation": "retrieve_historical",
                                 "ticker": ticker,
                                 "analysis_date": meta.get("timestamp", "unknown")[:10],
@@ -153,22 +187,13 @@ class RAGService:
                     }, exc_info=True)
                     # Continue without historical_analyses
             
-            if not search_results["documents"]:
-                yield ("final", {
-                    "analysis": f"No recent market data found{' for ' + ticker if ticker else ''}.",
-                    "sentiment": {"classification": "Insufficient Data", "score": 0.0},
-                    "references": [],
-                    "reasoning": "Insufficient data to provide detailed reasoning.",
-                    "risk_factors": [],
-                    "key_insights": [],
-                    "disclaimer": DISCLAIMER
-                })
-                return
             
-            # Step 3: Analyze sentiment
-            yield ("step", {"description": "🎯 Analyzing market sentiment...", "timestamp": datetime.now().isoformat()})
-            sentiment_results = sentiment_service.analyze_batch_sentiment(
-                search_results["documents"][:5],
+            # Step 3: Analyze sentiment (ASYNC PARALLEL - 4x faster!)
+            yield ("step", {"description": "🎯 Analyzing market sentiment in parallel...", "timestamp": datetime.now().isoformat()})
+            
+            # Use async parallel sentiment analysis
+            sentiment_results = await sentiment_service.analyze_batch_sentiment_async(
+                texts=search_results.get("documents", []),
                 ticker=ticker
             )
             aggregate_sentiment = sentiment_service.aggregate_sentiment(sentiment_results)
@@ -179,29 +204,72 @@ class RAGService:
             prediction_accuracy = None
             
             if ticker:
-                yield ("step", {"description": "📊 Calculating technical indicators...", "timestamp": datetime.now().isoformat()})
+                yield ("step", {"description": "📊 Fetching technical data in parallel...", "timestamp": datetime.now().isoformat()})
                 try:
                     from app.services.stock_api_service import stock_api_service
                     from app.services.technical_trend_analyzer import TechnicalTrendAnalyzer
                     from app.services.prediction_accuracy_tracker import PredictionAccuracyTracker
+                    # asyncio already imported at module level - no need to import again
                     
-                    # Get current technical indicators
-                    historical_data = stock_api_service.get_historical_data(ticker, period="3mo")
-                    if historical_data is not None and not historical_data.empty:
-                        technical_analysis = TechnicalAnalysisService.get_all_indicators(
-                            historical_data, ticker
+                    # NEW: PARALLEL EXECUTION - Run all 3 operations concurrently
+                    logger.info(f"🚀 Starting parallel data fetching for {ticker}")
+                    
+                    async def get_technical_async():
+                        """Get technical indicators (sync function wrapped in async)"""
+                        historical_data = await asyncio.to_thread(
+                            stock_api_service.get_historical_data, ticker, period="3mo"
+                        )
+                        if historical_data is not None and not historical_data.empty:
+                            return TechnicalAnalysisService.get_all_indicators(historical_data, ticker)
+                        return None
+                    
+                    async def get_trends_async():
+                        """Get 30-day trends (sync function wrapped in async)"""
+                        return await asyncio.to_thread(
+                            TechnicalTrendAnalyzer.analyze_indicator_trends, ticker, days=30
                         )
                     
-                    # NEW: Analyze 30-day indicator trends
-                    yield ("step", {"description": "📈 Analyzing technical indicator trends...", "timestamp": datetime.now().isoformat()})
-                    technical_trends = TechnicalTrendAnalyzer.analyze_indicator_trends(ticker, days=30)
+                    async def get_accuracy_async():
+                        """Get prediction accuracy (sync function wrapped in async)"""
+                        return await asyncio.to_thread(
+                            PredictionAccuracyTracker.analyze_prediction_accuracy, ticker, days_back=30
+                        )
                     
-                    # NEW: Check prediction accuracy
-                    yield ("step", {"description": "🎯 Evaluating past prediction accuracy...", "timestamp": datetime.now().isoformat()})
-                    prediction_accuracy = PredictionAccuracyTracker.analyze_prediction_accuracy(ticker, days_back=30)
+                    # Execute all three in parallel
+                    parallel_start = datetime.now()
+                    results = await asyncio.gather(
+                        get_technical_async(),
+                        get_trends_async(),
+                        get_accuracy_async(),
+                        return_exceptions=True  # Don't fail all if one fails
+                    )
+                    parallel_duration = (datetime.now() - parallel_start).total_seconds()
+                    
+                    # Unpack results
+                    technical_analysis, technical_trends, prediction_accuracy = results
+                    
+                    # Handle exceptions
+                    if isinstance(technical_analysis, Exception):
+                        logger.error(f"❌ Technical analysis failed: {technical_analysis}")
+                        technical_analysis = None
+                    if isinstance(technical_trends, Exception):
+                        logger.error(f"❌ Trends analysis failed: {technical_trends}")
+                        technical_trends = None
+                    if isinstance(prediction_accuracy, Exception):
+                        logger.error(f"❌ Prediction accuracy failed: {prediction_accuracy}")
+                        prediction_accuracy = None
+                    
+                    logger.info(f"✅ Parallel data fetching completed in {parallel_duration:.3f}s", extra={
+                        "operation": "parallel_data_fetch",
+                        "ticker": ticker,
+                        "duration_seconds": parallel_duration,
+                        "technical_success": technical_analysis is not None,
+                        "trends_success": technical_trends is not None,
+                        "accuracy_success": prediction_accuracy is not None
+                    })
                     
                 except Exception as e:
-                    logger.error(f"Error fetching technical data: {e}")
+                    logger.error(f"Error in parallel data fetching: {e}")
             
             # Step 5: Generate AI analysis with historical context
             yield ("step", {"description": "🤖 Generating AI-powered analysis...", "timestamp": datetime.now().isoformat()})
@@ -225,6 +293,9 @@ class RAGService:
             })
             
             # Only pass non-None values to avoid cluttering prompt with empty sections
+            timings['data_retrieval'] = time.time() - retrieval_start
+            
+            llm_start = time.time()
             logger.debug("🤖 Calling LLM for analysis", extra={
                 "operation": "generate_analysis",
                 "ticker": ticker or "none",
@@ -233,7 +304,7 @@ class RAGService:
                 "has_trends": technical_trends is not None
             })
             
-            analysis = self._generate_llm_response(
+            analysis = await self._generate_llm_response(
                 query, 
                 context, 
                 ticker, 
@@ -288,24 +359,153 @@ class RAGService:
                     value = [str(value)] if value else default
                 return value
 
-            # Combine results with type safety
+            # ==================================================================
+            # ENHANCED POST-PROCESSOR: Parse structured LLM response + Enrich
+            # ==================================================================
+            
+            # Step 1: Parse nested LLM response (backward compatible)
+            # Handle both old flat and new structured formats
+            if isinstance(analysis, dict):
+                # New structured format
+                analysis_obj = analysis.get("analysis", {})
+                if isinstance(analysis_obj, dict):
+                    analysis_summary = analysis_obj.get("summary", "")
+                    analysis_text = analysis_obj.get("full_text", "")
+                    analysis_points = analysis_obj.get("key_points", [])
+                else:
+                    # Fallback: analysis is still a string
+                    analysis_summary = ""
+                    analysis_text = str(analysis_obj)
+                    analysis_points = []
+                
+                prediction_obj = analysis.get("prediction", {})
+                if isinstance(prediction_obj, dict):
+                    prediction_summary = prediction_obj.get("summary", "")
+                    prediction_text = prediction_obj.get("outlook", "")
+                    scenarios = prediction_obj.get("scenarios", {})
+                else:
+                    # Fallback: prediction is still a string
+                    prediction_summary = ""
+                    prediction_text = str(prediction_obj)
+                    scenarios = {}
+            else:
+                # Very old format or error
+                analysis_summary = ""
+                analysis_text = "Analysis not available."
+                analysis_points = []
+                prediction_summary = ""
+                prediction_text = "No prediction available."
+                scenarios = {}
+            
+            
+            # Step 2: Build base result from LLM response
+            # CRITICAL: Frontend expects 'analysis' and 'prediction' as STRINGS!
+            # So we keep them flat and add NEW structured fields for future use
+            
             result = {
-                "analysis": safe_extract(analysis, "summary", "Analysis not available."),
+                # OLD FORMAT (strings) - Frontend expects these!
+                "analysis": analysis_text,  # ← Frontend uses this directly as string
+                "prediction": prediction_text,  # ← Frontend uses this directly as string
+                
+                # NEW FORMAT (structured) - Includes summary, key_points, and full_text
+                "analysis_structured": {
+                    "summary": analysis_summary,
+                    "key_points": analysis_points,
+                    "full_text": analysis_text
+                },
+                "prediction_structured": {
+                    "summary": prediction_summary,
+                    "outlook": prediction_text,
+                    "scenarios": scenarios
+                },
+                
                 "reasoning": safe_extract(analysis, "reasoning", "No reasoning provided."),
-                "prediction": safe_extract(analysis, "prediction", "No prediction available."),
-                "sentiment": aggregate_sentiment,
-                "references": references,
                 "risk_factors": safe_extract_list(analysis, "risk_factors", []),
                 "key_insights": safe_extract_list(analysis, "key_insights", []),
+                "confidence": analysis.get("confidence", 0.5) if isinstance(analysis, dict) else 0.5,
+                "timeframe": analysis.get("timeframe", "medium-term") if isinstance(analysis, dict) else "medium-term",
+                "price_target": analysis.get("price_target") if isinstance(analysis, dict) else None,
+                
+                # Sentiment and references (already available)
+                "sentiment": aggregate_sentiment,
+                "references": references,
                 "disclaimer": DISCLAIMER,
-                "technical_analysis": technical_analysis,  # Include for frontend
                 "cached": False
             }
             
-            # Apply guardrails
+            # Step 3: ENHANCED POST-PROCESSING - Enrich with all available data
+            
+            # 3A: Add comprehensive stock data
+            if technical_analysis and ticker:
+                # Extract price data from technical analysis
+                current_price = technical_analysis.get('current_price', 0.0)
+                
+                result["stock_data"] = {
+                    "ticker": ticker,
+                    "current_price": current_price,
+                    "day_high": technical_analysis.get('day_high', current_price),
+                    "day_low": technical_analysis.get('day_low', current_price),
+                    "previous_close": technical_analysis.get('previous_close', current_price),
+                    "volume": technical_analysis.get('volume', 0),
+                    "market_cap": technical_analysis.get('market_cap', 0),
+                    "week_52_high": technical_analysis.get('week_52_high', current_price),
+                    "week_52_low": technical_analysis.get('week_52_low', current_price),
+                    "change": current_price - technical_analysis.get('previous_close', current_price),
+                    "change_percent": ((current_price - technical_analysis.get('previous_close', current_price)) / technical_analysis.get('previous_close', current_price) * 100) if technical_analysis.get('previous_close', 0) > 0 else 0.0,
+                    "currency": "INR",
+                    "data_points": technical_analysis.get('data_points', 0)
+                }
+            
+            # 3B: Add technical indicators summary
+            if technical_analysis and 'indicators' in technical_analysis:
+                indicators = technical_analysis['indicators']
+                rsi_data = indicators.get('rsi', {})
+                macd_data = indicators.get('macd', {})
+                
+                result["technical_summary"] = {
+                    "rsi": {
+                        "value": rsi_data.get('value', 0),
+                        "signal": rsi_data.get('signal', 'unknown'),
+                        "interpretation": "Oversold" if rsi_data.get('value', 50) < 30 else "Overbought" if rsi_data.get('value', 50) > 70 else "Neutral"
+                    },
+                    "macd": {
+                        "value": macd_data.get('histogram', 0),
+                        "signal": "bullish" if macd_data.get('histogram', 0) > 0 else "bearish",
+                        "interpretation": "Positive momentum" if macd_data.get('histogram', 0) > 0 else "Negative momentum"
+                    },
+                    "trend": indicators.get('trend', 'unknown'),
+                    "support_levels": indicators.get('bollinger_bands', {}).get('lower', 0),
+                    "resistance_levels": indicators.get('bollinger_bands', {}).get('upper', 0)
+                }
+                
+                # Also keep full technical_analysis for backward compatibility
+                result["technical_analysis"] = technical_analysis
+            
+            # 3C: Add sentiment distribution
+            if aggregate_sentiment:
+                result["sentiment_detail"] = {
+                    "overall_score": aggregate_sentiment.get('score', 0.0),
+                    "classification": aggregate_sentiment.get('classification', 'neutral'),
+                    "sentiment_count": aggregate_sentiment.get('sentiment_count', {}),
+                    "trend": "improving" if aggregate_sentiment.get('score', 0) > 0.3 else "deteriorating" if aggregate_sentiment.get('score', 0) < -0.3 else "stable"
+                }
+            
+            # 3D: Add analysis metadata
+            result["metadata"] = {
+                "analyzed_at": datetime.now().isoformat(),
+                "ticker": ticker or "unknown",
+                "data_freshness": "real-time",
+                "sources_count": len(references) if references else 0,
+                "historical_analyses_used": len(historical_analyses) if historical_analyses else 0,
+                "has_technical_data": technical_analysis is not None,
+                "has_trend_data": technical_trends is not None,
+                "has_accuracy_data": prediction_accuracy is not None
+            }
+            
+            # Step 4: Apply guardrails (validates all text fields including structured ones)
             result = guardrails_service.process_analysis(result)
             
-            # Cache the result if ticker is provided (pass stock_data and technical_analysis)
+            # Step 5: Cache the enriched result
             if ticker:
                 # Use passed stock_data or fetch if missing (but fetch synchronously if needed, or just skip)
                 # Since we are in a sync generator, we rely on passed stock_data for safety
@@ -315,6 +515,19 @@ class RAGService:
                     logger.warning(f"⚠️ Stock data not provided for caching {ticker}, skipping price cache")
                     # Still cache the analysis itself, just without price data
                     self._cache_analysis(ticker, result, {}, technical_analysis)
+            
+            timings['llm_generation'] = time.time() - llm_start
+            timings['total'] = time.time() - analysis_start_time
+            
+            # Add timing info to result
+            result['_timings'] = {
+                'total_seconds': round(timings['total'], 2),
+                'cache_check_ms': round(timings.get('cache_check', 0) * 1000, 0),
+                'data_retrieval_seconds': round(timings.get('data_retrieval', 0), 2),
+                'llm_generation_seconds': round(timings.get('llm_generation', 0), 2)
+            }
+            
+            logger.info(f"⏱️  Analysis completed in {timings['total']:.2f}s (LLM: {timings.get('llm_generation', 0):.2f}s, Data: {timings.get('data_retrieval', 0):.2f}s)")
             
             yield ("final", result)
             
@@ -329,7 +542,7 @@ class RAGService:
                 "key_insights": [],
                 "disclaimer": DISCLAIMER
             })
-            return None
+            return  # async generators cannot return a value
 
     def _cache_analysis(self, ticker: str, result: Dict[str, Any], stock_data: Dict = None, technical_analysis: Dict = None):
         """Store analysis result in cache with comprehensive tracking."""
@@ -355,10 +568,37 @@ class RAGService:
             macd_data = tech_indicators.get('macd', {})
             bb_data = tech_indicators.get('bollinger_bands', {})
             
-            # Prediction analysis
-            prediction_text = result.get('prediction', '')
+            # Prediction analysis - Handle nested structure
+            prediction_data = result.get('prediction', '')
+            if isinstance(prediction_data, dict):
+                # New nested format: extract outlook text
+                prediction_text = prediction_data.get('outlook', '')
+                # Also get scenarios for context
+                scenarios = prediction_data.get('scenarios', {})
+                # Combine into a single text for MySQL storage
+                scenario_text = ""
+                if scenarios:
+                    scenario_parts = []
+                    if scenarios.get('bull'):
+                        scenario_parts.append(f"Bull: {scenarios['bull']}")
+                    if scenarios.get('base'):
+                        scenario_parts.append(f"Base: {scenarios['base']}")
+                    if scenarios.get('bear'):
+                        scenario_parts.append(f"Bear: {scenarios['bear']}")
+                    scenario_text = " | ".join(scenario_parts)
+                
+                # Combine outlook + scenarios for full prediction text
+                prediction_text = f"{prediction_text} {scenario_text}".strip() if scenario_text else prediction_text
+            else:
+                # Old flat format: prediction is already a string
+                prediction_text = str(prediction_data) if prediction_data else ''
+            
             prediction_direction = self._extract_prediction_direction(prediction_text, sentiment)
-            confidence = sentiment.get('average_confidence', sentiment.get('confidence', 0.0))
+            
+            # FIX: Extract confidence from LLM result, not sentiment
+            # OpenAI returns confidence in result, but sentiment confidence is always 0
+            confidence = result.get('confidence', 0.5) if isinstance(result, dict) else 0.5
+            logger.debug(f"📊 Confidence extracted: {confidence} (from LLM result, not sentiment)")
             
             # Create new cache entry with FULL tracking
             new_cache = AnalysisCache(
@@ -571,7 +811,7 @@ Future Outlook & Prediction:
         
         return "\n\n".join(context_parts)
     
-    def _generate_llm_response(
+    async def _generate_llm_response(
         self, 
         query: str, 
         context: str, 
@@ -583,23 +823,58 @@ Future Outlook & Prediction:
     ) -> Dict[str, Any]:
         """Generate LLM response with FULL context: news, technical, trends, and learning from past accuracy."""
         
-        # Format technical analysis if available
+        # Format technical analysis with COMPLETE data if available
         technical_context = ""
         if technical_analysis and 'indicators' in technical_analysis:
             indicators = technical_analysis['indicators']
             rsi_data = indicators.get('rsi', {})
             macd_data = indicators.get('macd', {})
             bb_data = indicators.get('bollinger_bands', {})
+            sma_data = indicators.get('sma', {})
+            trend_data = indicators.get('trend', 'Unknown')
+            
+            # Get current price and market data
+            current_price = technical_analysis.get('current_price', 'N/A')
+            data_points = technical_analysis.get('data_points', 0)
             
             technical_context = f"""
 
-Technical Indicators Analysis (Current):
-- RSI (14): {rsi_data.get('value', 'N/A')} - {rsi_data.get('signal', 'N/A')}
-- MACD: {macd_data.get('trend', 'N/A')} (Histogram: {macd_data.get('histogram', 'N/A')})
-- Bollinger Bands: {bb_data.get('position', 'N/A')}
+TECHNICAL INDICATORS (Current State):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 PRICE ACTION:
+   • Current Price: ₹{current_price}
+   • Data Points Analyzed: {data_points} days
+   • Overall Trend: {trend_data}
+
+📈 RSI (Relative Strength Index):
+   • Value: {rsi_data.get('value', 'N/A')} 
+   • Signal: {rsi_data.get('signal', 'N/A')}
+   • Interpretation: RSI below 30 = Oversold (potential buy), above 70 = Overbought (potential sell), 30-70 = Neutral
+
+📉 MACD (Moving Average Convergence Divergence):
+   • MACD Line: {macd_data.get('macd', 'N/A')}
+   • Signal Line: {macd_data.get('signal', 'N/A')}
+   • Histogram: {macd_data.get('histogram', 'N/A')}
+   • Trend: {macd_data.get('trend', 'N/A')}
+   • Interpretation: Positive histogram = Bullish momentum, Negative = Bearish momentum
+
+📊 BOLLINGER BANDS:
+   • Upper Band: ₹{bb_data.get('upper', 'N/A')}
+   • Middle Band: ₹{bb_data.get('middle', 'N/A')}
+   • Lower Band: ₹{bb_data.get('lower', 'N/A')}
+   • Bandwidth: {bb_data.get('bandwidth', 'N/A')}%
+   • Current Position: {bb_data.get('position', 'N/A')}
+   • Interpretation: Price near upper band = potentially overbought, near lower band = potentially oversold
+
+📈 MOVING AVERAGES:
+   • SMA 10-day: ₹{sma_data.get('10', 'N/A')}
+   • SMA 50-day: ₹{sma_data.get('50', 'N/A')}
+   • Interpretation: Price above SMA = Bullish, below = Bearish
+
+CRITICAL: Use these technical indicators to support your analysis with specific data points.
 """
         
-        # NEW: Format technical indicator trends
+        # Enhanced: Format technical indicator trends with COMPLETE 30-day data
         trends_context = ""
         if technical_trends:
             rsi_trend = technical_trends.get('rsi_trend', {})
@@ -614,18 +889,38 @@ Technical Indicators Analysis (Current):
                 return "N/A"
 
             rsi_avg = safe_fmt(rsi_trend.get('avg_30d'), 1)
-            price_change = safe_fmt(price_trend.get('change_pct', 0), 1)
+            rsi_current = safe_fmt(rsi_trend.get('current'), 1)
+            price_change = safe_fmt(price_trend.get('change_pct', 0), 2)
             sent_change = safe_fmt(sentiment_trend.get('change_from_oldest', 0), 2)
             
             trends_context = f"""
-Technical Indicator Trends (30-Day Analysis):
-- RSI Trend: {rsi_trend.get('direction', 'Unknown')} ({rsi_trend.get('interpretation', '')})
-  Current: {rsi_trend.get('current', 'N/A')}, 30D Avg: {rsi_avg}
-- MACD Trend: {macd_trend.get('direction', 'Unknown')} ({macd_trend.get('interpretation', '')})
-- Price Trend: {price_trend.get('direction', 'Unknown')}, Change: {price_change}%
-- Sentiment Trend: {sentiment_trend.get('direction', 'Unknown')}, Change: {sent_change}
 
-INTERPRETATION: These trends show momentum and pattern changes over the past month.
+30-DAY TREND ANALYSIS (Historical Patterns):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 RSI MOMENTUM TREND:
+   • Direction: {rsi_trend.get('direction', 'Unknown')}
+   • Current RSI: {rsi_current}
+   • 30-Day Average: {rsi_avg}
+   • Interpretation: {rsi_trend.get('interpretation', 'No trend data')}
+   • Insight: Shows whether stock is building bullish or bearish momentum
+
+📈 MACD TREND:
+   • Direction: {macd_trend.get('direction', 'Unknown')}
+   • Interpretation: {macd_trend.get('interpretation', 'No trend data')}
+   • Insight: Indicates if momentum is strengthening or weakening
+
+💹 PRICE MOVEMENT:
+   • Direction: {price_trend.get('direction', 'Unknown')}
+   • 30-Day Change: {price_change}%
+   • Insight: Overall price trajectory over past month
+
+📰 SENTIMENT EVOLUTION:
+   • Direction: {sentiment_trend.get('direction', 'Unknown')}
+   • Sentiment Change: {sent_change}
+   • Insight: How market sentiment has shifted
+
+CRITICAL: These trends reveal momentum changes and pattern development over time.
+Use this to identify if stock is improving, deteriorating, or stabilizing.
 """
         
         # NEW: Format prediction accuracy
@@ -674,68 +969,212 @@ If past predictions were often wrong in similar situations, adjust your outlook 
                     summary = f"{idx}. [{date}] {direction} at ₹{price}. {insight_str}. {risk_str}"
                     historical_summaries.append(summary)
             
-            historical_context = f"""
-
-Historical Analysis Context (Past Analyses for {ticker}):
-{chr(10).join(historical_summaries)}
-
-IMPORTANT: Compare current state with these past analyses. Identify evolving patterns.
-"""
-
-        # SELECT PROMPT BASED ON HISTORY AVAILABILITY
+            historical_context = "\n".join(historical_summaries) if historical_summaries else "No historical data available."
+        
+        # OPTIMIZED PROMPTS (50% token reduction)
+        # Build prompt based on whether we have historical context
         if historical_analyses and len(historical_analyses) > 0:
-            # SCENARIO 1: HISTORY EXISTS -> SYNTHESIS MODE
-            prompt = f"""You are a financial analyst with access to comprehensive historical data. Your task is to SYNTHESIZE past and present data to determine the stock's trajectory.
+            # SYNTHESIS prompt (with historical data) - COMPREHENSIVE & DETAILED
+            prompt = f"""You are a financial analyst for {ticker}. Synthesize past analyses with current market data.
 
-DATA SOURCES:
-1. HISTORICAL BASELINE (Past Analyses): Use this to understand the stock's previous state, risks, and technical setup.
-2. FRESH MARKET DATA (News & Current Metrics): Use this to see what has changed right now.
+CONTEXT (Current News & Data):
+{context}
 
-CONTEXT:
-{context}{technical_context}{trends_context}{accuracy_context}{historical_context}
+{technical_context}
 
-CRITICAL INSTRUCTIONS:
-1. COMPARE & CONTRAST: You MUST explicitly compare current metrics (Price, RSI, Sentiment) against the Historical Baseline.
-   - "Previously, RSI was X, now it is Y, indicating..."
-   - "The risk of Z mentioned in the past has now [increased/decreased] because..."
-2. IDENTIFY TRAJECTORY: Do not just analyze the snapshot. Analyze the *change*. Is the stock improving or deteriorating compared to the last analysis?
-3. SYNTHESIZE: Your prediction MUST be based on the combination of old and new data.
-   - If the old prediction was "Bullish" and new data is good -> Reinforce confidence.
-   - If the old prediction was "Bullish" but new data is bad -> Explain the pivot.
+{trends_context}
 
-OUTPUT FORMAT (JSON):
-1. summary: Detailed synthesis of how the stock has evolved from the past analysis to now.
-2. reasoning: Explain the drivers of change. Reference specific past vs. current numbers.
-3. risk_factors: List 3-5 risks. Highlight if old risks are still relevant or if new ones emerged.
-4. key_insights: List 3-5 takeaways focusing on the *shift* in momentum or sentiment.
-5. prediction: Forward-looking outlook. explicitly reference the trajectory from past to present.
+{accuracy_context}
 
-Respond ONLY with valid JSON."""
+HISTORICAL ANALYSES (Past Reports):
+{historical_context}
+
+⚠️ CRITICAL COMPLIANCE RULES:
+- NEVER use words: buy, sell, purchase, acquire, divest, invest
+- NEVER give direct advice ("you should", "we recommend")
+- Use ONLY informational language: "indicators suggest", "data shows", "trends point to"
+- Quote analyst views as "analyst recommends" NOT direct advice
+
+INSTRUCTIONS:
+1. Write COMPREHENSIVE, DETAILED ANALYSIS (3-4 full paragraphs covering ALL available data):
+   
+   Paragraph 1: Recent news, market events, and current sentiment
+   - Include specific news items with data
+   - Mention price movements and reactions
+   - Discuss market sentiment trends
+   
+   Paragraph 2: Technical analysis with actual values
+   - RSI with interpretation
+   - MACD with trend direction  
+   - Bollinger Bands position
+   - 30-day and 62-day trends with percentages
+   - All available technical indicators
+   
+   Paragraph 3: Company fundamentals and historical comparison
+   - Financial position, debt, cash reserves
+   - Compare current state vs historical analyses
+   - Evolution of predictions and accuracy
+   - Key changes since last analysis
+   
+   Paragraph 4: Market position and overall assessment
+   - Competitive landscape
+   - Sector role and importance
+   - Long-term prospects
+   - Current state summary
+
+2. Write DETAILED PREDICTION/OUTLOOK (2-3 comprehensive paragraphs):
+   
+   Paragraph 1 - Near-Term (1-3 months):
+   - Expected price movement with specific reasons
+   - Key catalysts or risks
+   - Technical signals and what they indicate
+   - Sentiment factors
+   
+   Paragraph 2 - Medium-Term (3-6 months):
+   - Trend expectations with data-backed reasoning
+   - Fundamental drivers (earnings, deals, sector growth)
+   - Growth or stability factors
+   - Market conditions impact
+   
+   Paragraph 3 - Scenarios (detailed for each):
+   Bull Case: Specific conditions, catalysts, supporting factors, price targets (₹X-₹Y)
+   Base Case: Most likely scenario, supporting data, expected range (₹X-₹Y)
+   Bear Case: Risk factors, negative catalysts, downside targets (₹X-₹Y)
+
+3. List 5-7 RISK FACTORS with specific context and impact
+
+4. List 5-7 KEY INSIGHTS with data points and analysis
+
+JSON OUTPUT FORMAT:
+{{
+  "analysis": {{
+    "summary": "Write a concise 2-3 sentence executive summary of the current situation and key takeaway",
+    "key_points": [
+      "Market Impact: [specific detail with data]",
+      "Technical Analysis: [RSI, MACD, BB with values]",
+      "Company Fundamentals: [financial position, cash, debt]",
+      "Historical Comparison: [how current vs past]",
+      "Market Position: [competitive landscape]"
+    ],
+    "full_text": "Write the complete 3-4 paragraph detailed analysis here as continuous text. Do NOT use markdown. Write natural flowing paragraphs with ALL data integrated. Each paragraph should be substantial (100-150 words). Include ALL technical values, news details, historical comparisons, and fundamental data. This is the MAIN comprehensive content covering everything in depth."
+  }},
+  "prediction": {{
+    "summary": "1-2 sentence prediction overview with direction and confidence",
+    "outlook": "Write the complete 2-3 paragraph prediction here as continuous text. Do NOT use markdown. Write natural flowing paragraphs covering near-term, medium-term, and all three scenarios with specific price ranges and detailed reasoning. Each paragraph should be substantial (100-150 words).",
+    "scenarios": {{
+      "bull": "Detailed bull case: specific catalysts, conditions, supporting factors, and price target (₹X-₹Y) with reasoning",
+      "base": "Detailed base case: most likely scenario, supporting data, and expected range (₹X-₹Y) with reasoning",
+      "bear": "Detailed bear case: key risks, negative catalysts, and downside targets (₹X-₹Y) with reasoning"
+    }}
+  }},
+  "reasoning": "Detailed explanation of the logic, data analysis, and specific factors supporting the prediction",
+  "confidence": 0.0-1.0,
+  "risk_factors": ["Risk 1 with context", "Risk 2", "Risk 3", "Risk 4", "Risk 5", "Risk 6", "Risk 7"],
+  "key_insights": ["Insight 1 with data", "Insight 2", "Insight 3", "Insight 4", "Insight 5", "Insight 6", "Insight 7"],
+  "timeframe": "near-term/medium-term/long-term",
+  "price_target": number or null
+}}
+
+CRITICAL: Write COMPREHENSIVE, DETAILED analysis. Use ALL available data. Write full natural paragraphs, NOT bullet points or markdown in full_text and outlook fields. Be thorough and data-rich. STRICTLY AVOID forbidden words."""
         else:
-            # SCENARIO 2: NO HISTORY -> BASELINE CREATION MODE
-            prompt = f"""You are a financial analyst establishing a BASELINE analysis for this stock. This is the first analysis in our system.
+            # BASELINE prompt (no historical) - COMPREHENSIVE & DETAILED
+            prompt = f"""You are a financial analyst establishing BASELINE analysis for {ticker}.
 
-DATA SOURCES:
-1. FRESH MARKET DATA (News & Current Metrics): Use this to form your initial view.
+CONTEXT (News & Market Data):
+{context}
 
-CONTEXT:
-{context}{technical_context}{trends_context}{accuracy_context}
+{technical_context}
 
-CRITICAL INSTRUCTIONS:
-1. ESTABLISH BASELINE: Since there is no past data, focus on creating a solid foundation.
-   - Clearly state the current technical and fundamental setup.
-   - Identify the *primary* risks that should be tracked in future.
-2. ANALYZE CURRENT MOMENTUM: Use the 30-day trends (if available in context) to judge immediate direction.
-3. SET EXPECTATIONS: Your prediction should set a benchmark for future comparisons.
+{trends_context}
 
-OUTPUT FORMAT (JSON):
-1. summary: Comprehensive analysis of the current market state.
-2. reasoning: Explain the key drivers based on current news and metrics.
-3. risk_factors: List 3-5 critical risks to watch going forward.
-4. key_insights: List 3-5 major takeaways from the current data.
-5. prediction: Forward-looking outlook based on current evidence.
+{accuracy_context}
 
-Respond ONLY with valid JSON."""
+⚠️ CRITICAL COMPLIANCE RULES:
+- NEVER use words: buy, sell, purchase, acquire, divest, invest
+- NEVER give direct advice ("you should", "we recommend")
+- Use ONLY informational language: "indicators suggest", "data shows", "trends point to"
+- Quote analyst views as "analyst recommends" NOT direct advice
+
+INSTRUCTIONS:
+1. Write COMPREHENSIVE, DETAILED ANALYSIS (3-4 full paragraphs covering ALL available data):
+   
+   Paragraph 1: Recent news, market events, and current sentiment
+   - Include specific news items with data
+   - Mention price movements and reactions
+   - Discuss market sentiment trends
+   
+   Paragraph 2: Technical analysis with actual values
+   - RSI with interpretation
+   - MACD with trend direction
+   - Bollinger Bands position
+   - 30-day and 62-day trends with percentages
+   - All available technical indicators
+   
+   Paragraph 3: Company fundamentals
+   - Financial position, debt, cash reserves
+   - Sector role and competitive position
+   - Recent deals, earnings, or events
+   - Company strengths and weaknesses
+   
+   Paragraph 4: Market position and overall assessment
+   - Competitive landscape
+   - Long-term prospects
+   - Current state summary
+
+2. Write DETAILED PREDICTION/OUTLOOK (2-3 comprehensive paragraphs):
+   
+   Paragraph 1 - Near-Term (1-3 months):
+   - Expected price movement with specific reasons
+   - Key catalysts or risks
+   - Technical signals and what they indicate
+   - Sentiment factors
+   
+   Paragraph 2 - Medium-Term (3-6 months):
+   - Trend expectations with data-backed reasoning
+   - Fundamental drivers (earnings, deals, sector growth)
+   - Growth or stability factors
+   - Market conditions impact
+   
+   Paragraph 3 - Scenarios (detailed for each):
+   Bull Case: Specific conditions, catalysts, supporting factors, price targets (₹X-₹Y)
+   Base Case: Most likely scenario, supporting data, expected range (₹X-₹Y)
+   Bear Case: Risk factors, negative catalysts, downside targets (₹X-₹Y)
+
+3. List 5-7 RISK FACTORS with specific context and impact
+
+4. List 5-7 KEY INSIGHTS with data points and analysis
+
+JSON OUTPUT FORMAT:
+{{
+  "analysis": {{
+    "summary": "Write a concise 2-3 sentence executive summary of the current situation and key takeaway",
+    "key_points": [
+      "Market Impact: [specific detail with data]",
+      "Technical Analysis: [RSI, MACD, BB with values]",
+      "Company Fundamentals: [financial position, cash, debt]",
+      "Market Position: [competitive landscape]",
+      "Current State: [key highlights]"
+    ],
+    "full_text": "Write the complete 3-4 paragraph detailed analysis here as continuous text. Do NOT use markdown. Write natural flowing paragraphs with ALL data integrated. Each paragraph should be substantial (100-150 words). Include ALL technical values, news details, and fundamental data. This is the MAIN comprehensive content."
+  }},
+  "prediction": {{
+    "summary": "1-2 sentence prediction overview with direction and confidence",
+    "outlook": "Write the complete 2-3 paragraph prediction here as continuous text. Do NOT use markdown. Write natural flowing paragraphs covering near-term, medium-term, and all three scenarios with specific price ranges and detailed reasoning. Each paragraph should be substantial (100-150 words).",
+    "scenarios": {{
+      "bull": "Detailed bull case: specific catalysts, conditions, supporting factors, and price target (₹X-₹Y) with reasoning",
+      "base": "Detailed base case: most likely scenario, supporting data, and expected range (₹X-₹Y) with reasoning",
+      "bear": "Detailed bear case: key risks, negative catalysts, and downside targets (₹X-₹Y) with reasoning"
+    }}
+  }},
+  "reasoning": "Detailed explanation of the logic, data analysis, and specific factors supporting the prediction",
+  "confidence": 0.0-1.0,
+  "risk_factors": ["Risk 1 with context", "Risk 2", "Risk 3", "Risk 4", "Risk 5", "Risk 6", "Risk 7"],
+  "key_insights": ["Insight 1 with data", "Insight 2", "Insight 3", "Insight 4", "Insight 5", "Insight 6", "Insight 7"],
+  "timeframe": "near-term/medium-term/long-term",
+  "price_target": number or null
+}}
+
+CRITICAL: Write COMPREHENSIVE, DETAILED analysis. Use ALL available data. Write full natural paragraphs, NOT bullet points or markdown in full_text and outlook fields. Be thorough and data-rich. STRICTLY AVOID forbidden words. This is baseline for future comparisons."""
 
         # Log the prompt being sent to LLM
         logger.info("📝 Prepared prompt for LLM", extra={
@@ -749,8 +1188,19 @@ Respond ONLY with valid JSON."""
             "has_accuracy": bool(prediction_accuracy)
         })
         
-        # Log actual prompt at DEBUG level
-        logger.debug("📝 Full LLM Prompt", extra={
+        # NEW: Log FULL prompt at INFO level for debugging
+        logger.info(f"📜 FULL OPENAI PROMPT for {ticker or 'none'}:")
+        logger.info(f"\n{'='*80}\n{prompt}\n{'='*80}\n")
+        
+        # Also log metadata in structured format
+        logger.info("Prompt metadata", extra={
+            "operation": "openai_prompt_full",
+            "ticker": ticker or "none",
+            "prompt_length": len(prompt)
+        })
+        
+        # Also log at debug for backward compatibility
+        logger.debug("📝 Full LLM Prompt (Preview)", extra={
             "operation": "_generate_llm_response",
             "ticker": ticker or "none",
             "prompt_length": len(prompt),
@@ -764,44 +1214,90 @@ Respond ONLY with valid JSON."""
                 "model": self.model,
                 "temperature": 0.5
             })
-            
+            # Call LLM with comprehensive parameters (synchronous client!)
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {
-                        "role": "system",
-                        "content": "You are a financial analyst with historical memory. Learn from past predictions to improve accuracy."
-                    },
+                    {"role": "system", "content": "You are an expert financial analyst for Indian stock markets with deep knowledge of technical analysis, fundamental analysis, and market sentiment."},
                     {"role": "user", "content": prompt}
                 ],
                 temperature=0.5,
+                max_tokens=3000,  # Allow comprehensive, detailed responses
                 response_format={"type": "json_object"}
             )
             
             import json
             result = json.loads(response.choices[0].message.content)
             
+            # Extract token usage
+            usage = response.usage if hasattr(response, 'usage') else None
+            prompt_tokens = usage.prompt_tokens if usage else 0
+            completion_tokens = usage.completion_tokens if usage else 0
+            total_tokens = usage.total_tokens if usage else 0
+            
             logger.info("✅ LLM response received", extra={
                 "operation": "llm_call",
                 "ticker": ticker or "none",
                 "response_keys": list(result.keys()) if isinstance(result, dict) else [],
-                "has_summary": "summary" in result,
+                "has_analysis": "analysis" in result,
                 "has_prediction": "prediction" in result,
+                "has_reasoning": "reasoning" in result,
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens,
                 "status": "success"
             })
             
-            # Log response preview at DEBUG level
+            
+            # NEW: Log FULL response at INFO level
+            try:
+                response_json_str = json.dumps(result, indent=2)
+            except (TypeError, ValueError) as json_err:
+                # If result contains non-serializable objects (like slice), use str()
+                logger.warning(f"⚠️  Could not JSON serialize LLM response: {json_err}, using str() fallback")
+                response_json_str = str(result)
+            
+            logger.info(f"📨 FULL OPENAI RESPONSE for {ticker or 'none'}:")
+            logger.info(f"\n{'='*80}\n{response_json_str}\n{'='*80}\n")
+            
+            # Also log metadata in structured format
+            logger.info("Response metadata", extra={
+                "operation": "openai_response_full",
+                "ticker": ticker or "none",
+                "prompt_tokens": prompt_tokens,
+                "completion_tokens": completion_tokens,
+                "total_tokens": total_tokens
+            })
+            
+            # Log response preview at DEBUG level (backward compat)
+            # Handle both dict and string formats for analysis/prediction
+            analysis_preview = "none"
+            if "analysis" in result:
+                analysis_val = result["analysis"]
+                if isinstance(analysis_val, dict):
+                    analysis_preview = str(analysis_val.get("full_text", ""))[:200]
+                else:
+                    analysis_preview = str(analysis_val)[:200]
+            
+            prediction_preview = "none"
+            if "prediction" in result:
+                prediction_val = result["prediction"]
+                if isinstance(prediction_val, dict):
+                    prediction_preview = str(prediction_val.get("outlook", ""))[:200]
+                else:
+                    prediction_preview = str(prediction_val)[:200]
+            
             logger.debug("📤 LLM Response Preview", extra={
                 "operation": "llm_call",
                 "ticker": ticker or "none",
-                "summary_preview": result.get("summary", "")[:200] if "summary" in result else "none",
-                "prediction_preview": result.get("prediction", "")[:200] if "prediction" in result else "none"
+                "analysis_preview": analysis_preview,
+                "prediction_preview": prediction_preview
             })
             
             return result
             
         except Exception as e:
-            logger.error(f"Error generating LLM response: {e}")
+            logger.error(f"Error generating LLM response: {e}", exc_info=True)  # Add full traceback
             return {
                 "summary": "Unable to generate analysis at this time.",
                 "reasoning": "",

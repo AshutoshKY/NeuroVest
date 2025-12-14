@@ -62,7 +62,7 @@ async def test_hal_complete_flow():
     print(f"\n[4/4] Generating AI analysis for {ticker}...")
     start_time = time.time()
     try:
-        analysis = rag_service.generate_analysis(
+        analysis = await rag_service.generate_analysis(
             query=f"Analyze {ticker} stock",
             ticker=ticker,
             n_results=10
@@ -102,7 +102,7 @@ async def test_hal_complete_flow():
     print(f"\n[BONUS] Testing cache...")
     start_time = time.time()
     try:
-        cached_analysis = rag_service.generate_analysis(
+        cached_analysis = await rag_service.generate_analysis(
             query=f"Analyze {ticker} stock",
             ticker=ticker
         )

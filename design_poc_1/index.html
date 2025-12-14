@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Plus Jakarta Sans', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] },
+                    colors: { primary: { 500: '#6366f1', 600: '#4f46e5' }, success: '#10b981', danger: '#ef4444' }
+                }
+            }
+        }
+    </script>
+    <style>
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans">
+
+    <!-- TOP NAV -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur fixed top-0 w-full z-50 flex items-center justify-between px-6">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-primary-500 dark:text-white border-b-2 border-primary-500">Dashboard</a>
+                <a href="watchlist.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">Watchlist</a>
+                <a href="history.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">History</a>
+                <a href="docs.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white transition">Docs</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-primary-600 dark:text-primary-400">4/5 Analyses Left</span>
+            </div>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-white hover:border-primary-500 transition">TD</a>
+            <button onclick="toggleDrawer()" class="text-gray-500 hover:text-white p-2"><svg class="w-6 h-6" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg></button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 pt-16 relative overflow-y-auto">
+        <div class="flex flex-col items-center justify-center min-h-[80vh] p-6">
+            <div class="text-center mb-10 animate-fade-in">
+                <h1 class="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">Market
+                    Intelligence, <span
+                        class="text-transparent bg-clip-text bg-gradient-to-r from-primary-500 to-purple-600">Simplified.</span>
+                </h1>
+                <p class="text-lg text-gray-600 dark:text-zinc-500 max-w-2xl mx-auto">Instant AI-powered technical
+                    analysis for Indian equity markets.</p>
+            </div>
+
+            <div class="relative w-full max-w-2xl mb-12 group z-10">
+                <div class="absolute inset-y-0 left-5 flex items-center pointer-events-none">
+                    <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <input type="text"
+                    class="w-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-full py-5 pl-12 pr-4 text-lg text-gray-900 dark:text-white shadow-xl dark:shadow-none focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition placeholder-gray-400"
+                    placeholder="Search ticker (e.g. RELIANCE)..."
+                    onkeydown="if(event.key === 'Enter') window.location.href='analysis.html'">
+            </div>
+
+            <div class="w-full max-w-4xl">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 px-1">⚡ Trending in NeuroVest
+                </h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <a href="analysis.html"
+                        class="block bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl hover:border-primary-500/50 hover:shadow-lg cursor-pointer transition group">
+                        <div class="flex justify-between items-start mb-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs group-hover:bg-primary-500 group-hover:text-white transition">
+                                R</div>
+                            <span
+                                class="bg-emerald-500/10 text-emerald-500 text-xs font-mono px-2 py-1 rounded border border-emerald-500/20">+2.47%</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white">RELIANCE</h4>
+                        <div class="text-xs text-gray-500">Energy • Large Cap</div>
+                    </a>
+                    <a href="analysis.html"
+                        class="block bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl hover:border-primary-500/50 hover:shadow-lg cursor-pointer transition group">
+                        <div class="flex justify-between items-start mb-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs group-hover:bg-primary-500 group-hover:text-white transition">
+                                T</div>
+                            <span
+                                class="bg-emerald-500/10 text-emerald-500 text-xs font-mono px-2 py-1 rounded border border-emerald-500/20">+1.17%</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white">TCS</h4>
+                        <div class="text-xs text-gray-500">IT Services • Large Cap</div>
+                    </a>
+                    <a href="analysis.html"
+                        class="block bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl hover:border-primary-500/50 hover:shadow-lg cursor-pointer transition group">
+                        <div class="flex justify-between items-start mb-3">
+                            <div
+                                class="w-10 h-10 rounded-full bg-gray-100 dark:bg-zinc-800 flex items-center justify-center font-bold text-xs group-hover:bg-primary-500 group-hover:text-white transition">
+                                Z</div>
+                            <span
+                                class="bg-red-500/10 text-red-500 text-xs font-mono px-2 py-1 rounded border border-red-500/20">-0.85%</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-gray-900 dark:text-white">ZOMATO</h4>
+                        <div class="text-xs text-gray-500">Tech • Mid Cap</div>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- RIGHT DRAWER (Shared) -->
+    <aside id="drawer"
+        class="fixed top-16 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer closed z-50 flex flex-col shadow-2xl">
+        <div
+            class="p-4 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Context</span>
+            <button onclick="toggleDrawer()" class="text-gray-400 hover:text-white"><svg class="w-4 h-4" fill="none"
+                    stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg></button>
+        </div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div class="p-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl">
+                <div class="flex justify-between text-xs mb-2">
+                    <span class="text-gray-500">Daily Limit</span>
+                    <span class="text-gray-900 dark:text-white font-bold">4 / 5</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-primary-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-gray-500 mb-3">Saved Analyses</div>
+                <a href="analysis.html"
+                    class="block p-3 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-lg hover:border-primary-500/50 cursor-pointer transition">
+                    <div class="flex justify-between text-gray-900 dark:text-white font-bold text-sm">
+                        <span>RELIANCE</span><span class="text-emerald-500">Bullish</span></div>
+                    <div class="text-xs text-gray-500 mt-1">₹1,556.00 • 2m ago</div>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        function toggleDrawer() {
+            const d = document.getElementById('drawer');
+            d.classList.toggle('closed');
+            d.classList.toggle('open');
+        }
+        // Auto-peek drawer on load
+        window.onload = () => {
+            const d = document.getElementById('drawer');
+            d.style.transform = 'translateX(90%)';
+            setTimeout(() => { d.style.transform = ''; }, 1000);
+        };
+    </script>
+</body>
+
+</html>
