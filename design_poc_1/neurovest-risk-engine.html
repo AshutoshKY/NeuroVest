@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Structured Risk Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        bg: '#020617', panel: '#0f172a', border: '#1e293b',
+                        text: '#94a3b8', heading: '#e2e8f0',
+                        bull: '#10b981', bear: '#f43f5e',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .font-mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .label-sm {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .bg-grid {
+            background-image: linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.05;
+        }
+
+        /* Terminal style for Derived Narrative */
+        .terminal-block {
+            border-left: 2px solid #3b82f6;
+            background: rgba(15, 23, 42, 0.5);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col font-sans selection:bg-slate-700 selection:text-white">
+
+    <div class="fixed inset-0 bg-grid pointer-events-none"></div>
+
+    <!-- 1. POSITIONING BANNER -->
+    <div class="w-full bg-slate-900/80 border-b border-border py-2 text-center backdrop-blur-sm z-50">
+        <p class="text-[10px] font-mono text-slate-500 uppercase tracking-wide">
+            <span class="text-indigo-400 font-bold">SYSTEM NOTICE:</span> This is a structured market state engine that
+            visualizes probabilistic scenarios — not a trading signal generator.
+        </p>
+    </div>
+
+    <main class="max-w-6xl mx-auto w-full p-6 md:p-12 relative z-10 mt-6">
+
+        <!-- HEADER -->
+        <header class="flex flex-col md:flex-row justify-between items-end border-b border-border pb-6 mb-8 gap-6">
+            <div>
+                <div class="flex items-center gap-3 mb-2">
+                    <span
+                        class="text-xs font-mono text-slate-500 bg-panel px-2 py-1 rounded border border-border">NSE</span>
+                    <h1 class="text-3xl font-semibold text-heading tracking-tight">RELIANCE.NS</h1>
+                </div>
+                <div class="flex gap-1 h-1.5 w-64 rounded-full overflow-hidden mt-3">
+                    <div class="bg-emerald-900/50 w-1/3"></div>
+                    <div class="bg-slate-800 w-1/3"></div>
+                    <div class="bg-emerald-500 w-1/3"></div>
+                </div>
+                <span class="text-[10px] text-slate-600 font-mono mt-1 block">REGIME: COMPRESSION → BREAKOUT</span>
+            </div>
+            <div class="text-right">
+                <div class="text-4xl font-mono font-medium text-heading tracking-tighter">1556.50</div>
+                <div class="text-xs text-slate-500 mt-1 font-mono">LATEST CLOSE</div>
+            </div>
+        </header>
+
+        <!-- 2. MARKET STATE (Strict Enums) -->
+        <section class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-10">
+            <!-- Dominant Bias -->
+            <div class="bg-panel border border-emerald-500/20 p-4 rounded-md relative overflow-hidden">
+                <div class="label-sm text-emerald-600 mb-1">Trend Bias</div>
+                <div class="text-xl font-bold text-emerald-400 tracking-tight">Bullish</div>
+            </div>
+            <!-- Secondary Enums -->
+            <div class="bg-panel border border-border p-4 rounded-md">
+                <div class="label-sm mb-1">Momentum</div>
+                <div class="text-sm font-mono text-slate-300">NEUTRAL</div>
+            </div>
+            <div class="bg-panel border border-border p-4 rounded-md">
+                <div class="label-sm mb-1">Volatility</div>
+                <div class="text-sm font-mono text-slate-300">LOW_COMPRESSION</div>
+            </div>
+            <!-- Confidence -->
+            <div class="bg-panel border border-border p-4 rounded-md">
+                <div class="flex justify-between mb-1">
+                    <span class="label-sm">Confidence</span>
+                    <span class="text-xs font-mono text-white">0.72</span>
+                </div>
+                <div class="w-full bg-slate-800 h-1 rounded-full">
+                    <div class="bg-slate-400 h-full w-[72%]"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. ZONE VISUALIZER -->
+        <section class="mb-12">
+            <div class="flex justify-between items-end mb-2">
+                <h3 class="label-sm text-slate-400">Structural Price Zones</h3>
+            </div>
+            <div class="relative h-16 bg-panel border border-border rounded-md w-full overflow-hidden"
+                id="zone-container"></div>
+            <div class="flex justify-between text-[10px] font-mono text-slate-600 px-1 mt-1">
+                <span>1490</span><span>1550</span><span>1610</span>
+            </div>
+        </section>
+
+        <!-- 4. ACTIONABLE SCENARIOS -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <!-- Primary -->
+            <div
+                class="bg-panel border border-emerald-900/30 rounded-md p-5 relative shadow-[0_0_15px_rgba(16,185,129,0.05)]">
+                <div
+                    class="absolute -top-3 left-4 bg-emerald-950 border border-emerald-900 text-emerald-400 text-[10px] px-2 py-0.5 rounded font-bold uppercase">
+                    Primary (70%)</div>
+                <h4 class="text-sm font-medium text-heading mt-2 mb-4 leading-snug">Bullish continuation toward
+                    resistance structure.</h4>
+                <div class="bg-bg border border-border p-2 rounded mb-3">
+                    <div class="label-sm text-slate-500 mb-1">Trigger</div>
+                    <div class="text-xs text-slate-300 font-mono">Hold > 1535 & Break 1570</div>
+                </div>
+                <div class="pt-2 border-t border-border">
+                    <div class="label-sm text-rose-400">Invalidation</div>
+                    <div class="text-xs text-rose-300/80 font-mono">Close Below 1500</div>
+                </div>
+            </div>
+            <!-- Secondary -->
+            <div class="bg-panel border border-border rounded-md p-5 opacity-90">
+                <div class="flex justify-between mb-2"><span class="label-sm">Secondary</span><span
+                        class="font-mono text-xs font-bold text-slate-400">20%</span></div>
+                <h4 class="text-sm font-medium text-slate-300 mb-4 leading-snug">Range-bound consolidation within value
+                    area.</h4>
+                <div class="pt-2 border-t border-border">
+                    <div class="label-sm text-rose-400">Invalidation</div>
+                    <div class="text-xs text-slate-400 font-mono">Breakout of Range</div>
+                </div>
+            </div>
+            <!-- Tail -->
+            <div class="bg-panel border border-border rounded-md p-5 opacity-75">
+                <div class="flex justify-between mb-2"><span class="label-sm">Tail Risk</span><span
+                        class="font-mono text-xs font-bold text-slate-400">10%</span></div>
+                <h4 class="text-sm font-medium text-slate-300 mb-4 leading-snug">Bearish reversal breakdown.</h4>
+                <div class="pt-2 border-t border-border">
+                    <div class="label-sm text-emerald-500">Invalidation</div>
+                    <div class="text-xs text-slate-400 font-mono">Recovery > 1535</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 5. DERIVED DATA BLOCK (Narrative & Accuracy) -->
+        <h3 class="label-sm text-slate-500 mb-4 border-b border-border pb-2">Derived Logic & Performance</h3>
+
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+
+            <!-- Narrative (Visibly Derived) -->
+            <div class="terminal-block p-6 rounded-r-md">
+                <div class="flex items-center gap-2 mb-3">
+                    <svg class="w-4 h-4 text-blue-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                    <span class="label-sm text-blue-400">Machine Narrative Output</span>
+                    <span class="text-[9px] bg-slate-800 text-slate-500 px-1.5 rounded ml-auto">READ ONLY</span>
+                </div>
+                <p class="text-sm text-slate-300 leading-relaxed font-mono">
+                    "RELIANCE structure indicates bullish bias constrained by neutral momentum. Primary probabilistic
+                    path favors continuation > 1535. Structural thesis invalidated on < 1500 close." </p>
+                        <div class="mt-4 pt-3 border-t border-slate-700/50 flex gap-4">
+                            <div>
+                                <span class="label-sm block mb-1">Active Risks</span>
+                                <ul class="text-[10px] text-slate-400 list-disc list-inside">
+                                    <li>Neutral momentum limits upside</li>
+                                    <li>Low volatility environment</li>
+                                </ul>
+                            </div>
+                        </div>
+            </div>
+
+            <!-- Historical Accuracy (The "Trust" Block) -->
+            <div class="bg-panel border border-border rounded-md p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <span class="label-sm text-slate-400">Model Reliability Card</span>
+                    <span class="text-[10px] text-slate-600 font-mono">ID: REL-L90</span>
+                </div>
+
+                <div class="grid grid-cols-2 gap-y-6 gap-x-4">
+                    <div>
+                        <span class="block text-[10px] text-slate-500 uppercase">Lookback Window</span>
+                        <span class="text-sm font-mono text-white">90 Days</span>
+                    </div>
+                    <div>
+                        <span class="block text-[10px] text-slate-500 uppercase">Directional Accuracy</span>
+                        <div class="flex items-baseline gap-2">
+                            <span class="text-lg font-mono text-white font-bold">68.0%</span>
+                            <span class="text-[10px] text-slate-500">vs 50% Random</span>
+                        </div>
+                    </div>
+                    <div class="col-span-2 pt-4 border-t border-slate-800">
+                        <div class="flex justify-between items-center">
+                            <span class="text-xs font-bold text-emerald-500 uppercase tracking-wider">Excess Edge</span>
+                            <span class="text-xl font-mono text-emerald-400 font-bold">+18.0%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-1.5 rounded-full mt-2 overflow-hidden">
+                            <div class="bg-emerald-500 h-full w-[18%] ml-[50%] relative">
+                                <div class="absolute left-0 top-0 bottom-0 w-0.5 bg-white opacity-50"></div>
+                                <!-- Baseline Marker -->
+                            </div>
+                        </div>
+                        <div class="flex justify-between text-[8px] text-slate-600 mt-1 font-mono">
+                            <span>0%</span>
+                            <span class="mr-[32%]">Baseline</span>
+                            <span>100%</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- RENDER LOGIC -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = { price: 1556.5, support: [1500, 1535], value: [1535, 1570], resistance: [1570, 1600] };
+            const container = document.getElementById('zone-container');
+            const min = 1480, max = 1620, range = max - min;
+
+            const getPct = (v) => ((v - min) / range) * 100;
+            const width = (s, e) => ((e - s) / range) * 100;
+
+            const addZone = (s, e, cls, txt, sub) => {
+                const d = document.createElement('div');
+                d.className = `absolute top-0 bottom-0 flex flex-col items-center justify-center text-[10px] font-mono ${cls} border-r border-white/5`;
+                d.style.left = `${getPct(s)}%`; d.style.width = `${width(s, e)}%`;
+                d.innerHTML = `<span class="opacity-90 font-bold">${txt}</span><span class="text-[8px] opacity-60 uppercase">${sub}</span>`;
+                container.appendChild(d);
+            };
+
+            addZone(data.support[0], data.support[1], 'bg-slate-800/50 text-slate-400', 'SUPPORT', 'Acceptance');
+            addZone(data.value[0], data.value[1], 'bg-blue-900/10 text-blue-400', 'VALUE', 'Neutral');
+            addZone(data.resistance[0], data.resistance[1], 'bg-amber-900/10 text-amber-400', 'RESIST', 'Rejection');
+
+            const m = document.createElement('div');
+            m.className = 'absolute top-0 bottom-0 w-0.5 bg-white shadow-[0_0_10px_white] z-20';
+            m.style.left = `${getPct(data.price)}%`;
+            container.appendChild(m);
+        });
+    </script>
+</body>
+
+</html>

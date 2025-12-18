@@ -8,6 +8,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.logging_config import setup_logging
 from app.api import auth, stocks, sentiment, news, admin, health, tracking
+from app.api.routes import test  # Test endpoints without auth
 from app.services.data_ingestion import data_ingestion_service
 # Import models to ensure tables are created
 
@@ -164,6 +165,7 @@ logger.info("✅ Security middleware enabled (IP blacklist, system toggles, DDOS
 # Supports: Oracle Cloud backend + Streamlit Cloud frontend
 allowed_origins = [
     "http://localhost:3000",
+    "http://localhost:3001",  # Frontend v2 running on 3001
     "http://localhost:8000", 
     "http://localhost:8502",
     "http://localhost:8501",  # Streamlit default
@@ -204,6 +206,7 @@ from app.api import (
     auth, health, stocks, sentiment, news, admin, tracking, user, user_stocks,
     admin_management, admin_health, admin_traffic, admin_history, admin_cache, device, security, admin_orchestrator
 )
+from app.api.routes import signal  # Signal Engine router
 
 # Include routers
 logger.info("[INIT] Registering API routers...")
@@ -219,6 +222,8 @@ app.include_router(security.router, prefix="/api", tags=["Security"])  # Securit
 app.include_router(user.router, prefix="/user", tags=["User"])
 app.include_router(user_stocks.router, tags=["User Stocks"])
 app.include_router(admin_management.router, prefix="/admin", tags=["Admin Management"])
+app.include_router(signal.router, tags=["Signal Engine"])  # NEW: Signal Engine
+app.include_router(test.router, tags=["Testing"])  # TEST: No auth endpoints
 
 # Phase 3: Admin Monitoring APIs
 app.include_router(admin_health.router)

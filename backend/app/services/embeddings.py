@@ -12,14 +12,13 @@ class EmbeddingService:
     """Service for generating and managing embeddings using sentence-transformers."""
     
     def __init__(self):
-        """Initialize sentence-transformers model and ChromaDB."""
+        """Initialize ChromaDB. Model loads lazily on first use."""
         # Use local embedding model (free, no API needed)
-        self.model = SentenceTransformer('all-MiniLM-L6-v2')
-        logger.info("Loaded local embedding model: all-MiniLM-L6-v2")
+        self.model = None  # Lazy load on first use
+        logger.info("Embedding service initialized (model will load on first use)")
         
         self.chroma_client = chromadb.PersistentClient(
-            path=settings.CHROMA_DB_PATH,
-            settings=ChromaSettings(anonymized_telemetry=False)
+            path=str(settings.CHROMA_DB_PATH)
         )
         
         # Initialize collections
@@ -32,12 +31,23 @@ class EmbeddingService:
             name="stock_analysis",
             metadata={"description": "Historical stock analyses"}
         )
-    
+     
     def _get_collection(self, collection_type: str):
         """Get the appropriate collection based on type."""
         if collection_type == "analysis":
             return self.analysis_collection
         return self.news_collection
+    
+    def _ensure_model_loaded(self):
+        """Load model lazily on first use to avoid blocking startup."""
+        if self.model is None:
+            logger.info("🔄 Loading sentence-transformers model...")
+            try:
+                self.model = SentenceTransformer('all-MiniLM-L6-v2')
+                logger.info("✅ Loaded local embedding model: all-MiniLM-L6-v2")
+            except Exception as e:
+                logger.error(f"❌ Failed to load embedding model: {e}")
+                raise
     
     def get_collection_count(self, collection_type: str = "news") -> int:
         """Get number of documents in the collection."""
@@ -50,15 +60,17 @@ class EmbeddingService:
     def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for a single text using local model."""
         try:
+            self._ensure_model_loaded()
             embedding = self.model.encode(text, convert_to_numpy=True)
             return embedding.tolist()
         except Exception as e:
             logger.error(f"Error generating embedding: {e}")
             raise
     
-    def generate_embeddings_batch(self, texts: List[str]) -> List[List[float]]:
-        """Generate embeddings for multiple texts using local model."""
+    def generate_embeddings(self, texts: List[str]) -> List[List[float]]:
+        """Generate embeddings for a list of texts."""
         try:
+            self._ensure_model_loaded()
             embeddings = self.model.encode(texts, convert_to_numpy=True, show_progress_bar=False)
             return [emb.tolist() for emb in embeddings]
         except Exception as e:
@@ -82,7 +94,7 @@ class EmbeddingService:
             })
             
             # Generate embeddings
-            embeddings = self.generate_embeddings_batch(documents)
+            embeddings = self.generate_embeddings(documents)
             
             logger.debug("🔢 Generated embeddings", extra={
                 "operation": "generate_embeddings",

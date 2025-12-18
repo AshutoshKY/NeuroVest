@@ -1,0 +1,570 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        primary: { 500: '#6366f1', 600: '#4f46e5' },
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.peek {
+            transform: translateX(92%);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+
+        .scenario-primary {
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #6366f1;
+            color: var(--text-active);
+        }
+
+        /* Mode Toggling Logic */
+        body.mode-lite .pro-element {
+            display: none !important;
+        }
+
+        body.mode-pro .lite-element {
+            display: none !important;
+        }
+
+        /* Toggle Switch Styles */
+        .toggle-checkbox:checked {
+            right: 0;
+            border-color: #6366f1;
+        }
+
+        .toggle-checkbox:checked+.toggle-label {
+            background-color: #6366f1;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans mode-lite">
+    <!-- Default to Lite -->
+
+    <!-- 1. POSITIONING BANNER (Dynamic Text) -->
+    <div
+        class="w-full h-8 bg-white/95 dark:bg-[#09090b]/95 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-center backdrop-blur-md fixed top-0 z-[60]">
+        <p class="text-[10px] font-mono text-gray-500 uppercase tracking-wide pro-element">
+            <span class="text-primary-500 font-bold">SYSTEM NOTICE:</span> Structured market state engine. Visualizing
+            probabilistic scenarios. Not advice.
+        </p>
+        <p class="text-[10px] font-sans text-gray-500 tracking-wide lite-element">
+            <span class="text-success font-bold">Simple View:</span> AI-powered summary for long-term investors.
+        </p>
+    </div>
+
+    <!-- 2. TOP NAV -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/90 dark:bg-[#09090b]/90 backdrop-blur-md fixed top-8 w-full z-50 flex items-center justify-between px-6 transition-colors duration-300">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-primary-500 border-b-2 border-primary-500 font-bold">Dashboard</a>
+                <a href="watchlist.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">Watchlist</a>
+                <a href="history.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">History</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+
+            <!-- LITE / PRO TOGGLE -->
+            <div class="flex items-center bg-gray-200 dark:bg-zinc-800 rounded-full p-1 relative">
+                <div id="mode-slider"
+                    class="absolute left-1 w-[58px] h-7 bg-white dark:bg-zinc-600 rounded-full shadow-sm transition-all duration-300">
+                </div>
+                <button onclick="setMode('lite')"
+                    class="relative z-10 px-3 py-1 text-xs font-bold rounded-full transition-colors duration-300"
+                    id="btn-lite">Lite</button>
+                <button onclick="setMode('pro')"
+                    class="relative z-10 px-3 py-1 text-xs font-bold rounded-full transition-colors duration-300"
+                    id="btn-pro">Pro</button>
+            </div>
+
+            <div class="h-6 w-px bg-gray-300 dark:bg-zinc-700"></div>
+
+            <!-- Theme Toggle -->
+            <button onclick="document.documentElement.classList.toggle('dark')"
+                class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                    </path>
+                </svg>
+            </button>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-white">TD</a>
+        </div>
+    </header>
+
+    <!-- 3. MAIN CONTENT -->
+    <main class="flex-1 pt-40 relative overflow-y-auto p-4 md:p-8">
+        <div class="max-w-6xl mx-auto space-y-8 animate-fade-in pb-20">
+
+            <!-- HEADER BLOCK (Shared but different subtitles) -->
+            <header
+                class="flex flex-col md:flex-row justify-between items-end border-b border-gray-200 dark:border-zinc-800 pb-6 gap-6">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <span
+                            class="text-xs font-mono text-gray-500 bg-gray-100 dark:bg-zinc-900 px-2 py-1 rounded border border-gray-200 dark:border-zinc-800">NSE</span>
+                        <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">RELIANCE.NS</h1>
+                    </div>
+
+                    <!-- PRO: Regime Strip -->
+                    <div class="mt-3 pro-element">
+                        <div class="flex justify-between text-[10px] text-gray-500 font-mono mb-1">
+                            <span>90D LOOKBACK</span>
+                            <span>CURRENT REGIME</span>
+                        </div>
+                        <div class="flex h-2 w-full md:w-80 rounded-sm overflow-hidden gap-[1px]">
+                            <div class="bg-success/30 w-12" title="Bullish"></div>
+                            <div class="bg-success/40 w-8" title="Bullish"></div>
+                            <div class="bg-gray-400/30 w-16" title="Neutral"></div>
+                            <div class="bg-danger/30 w-6" title="Bearish"></div>
+                            <div class="bg-gray-400/30 w-12" title="Neutral"></div>
+                            <div class="bg-primary-500/40 w-10" title="Compression"></div>
+                            <div class="bg-success/80 w-full" title="Current: Bullish Breakout"></div>
+                        </div>
+                        <span class="text-[10px] text-primary-500 font-bold font-mono mt-1 block">REGIME: BREAKOUT
+                            (ACCUMULATION)</span>
+                    </div>
+
+                    <!-- LITE: Simple Sentiment -->
+                    <div class="mt-3 lite-element">
+                        <div class="flex items-center gap-3">
+                            <span
+                                class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-success/10 text-success text-sm font-bold border border-success/20">
+                                <span class="w-2 h-2 rounded-full bg-success"></span> Very Bullish
+                            </span>
+                            <span class="text-xs text-gray-500">Market mood is optimistic</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-5xl font-mono font-medium text-gray-900 dark:text-white tracking-tighter">1556.50
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1 font-mono">LATEST CLOSE (+2.47%)</div>
+                </div>
+            </header>
+
+            <!-- SECTION: MARKET STATE (Different Data Density) -->
+            <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Trend Bias (Shared) -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-success/20 p-5 rounded-2xl relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 w-20 h-20 bg-success/5 rounded-bl-full group-hover:bg-success/10 transition">
+                    </div>
+                    <div class="text-[10px] uppercase font-bold text-success mb-1">Trend</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Upward</div>
+                    <div class="text-[10px] text-success/70 mt-2 font-mono pro-element">STRUCTURE: HIGHER HIGHS</div>
+                    <div class="text-[10px] text-gray-500 mt-2 lite-element">Price is rising steadily</div>
+                </div>
+
+                <!-- PRO: Technicals -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl pro-element">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Momentum</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-300">Neutral</span>
+                </div>
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl pro-element">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Volatility</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">Compression</span>
+                </div>
+
+                <!-- LITE: Simple Stats -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl lite-element">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Stability</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">High
+                        Stability</span>
+                </div>
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl lite-element">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Risk Level</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-success/10 text-success">Low
+                        Risk</span>
+                </div>
+
+                <!-- Confidence (Shared) -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl flex flex-col justify-center">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] uppercase font-bold text-gray-500">AI Confidence</span>
+                        <span class="font-mono text-sm font-bold text-gray-900 dark:text-white">72%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-primary-500 h-full w-[72%]"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION: CHART (Shared) & ZONES (Pro Only) -->
+            <section class="flex flex-col lg:flex-row gap-6">
+                <!-- Chart (Full width on Lite, 55% on Pro) -->
+                <div id="chart-panel"
+                    class="w-full lg:w-[55%] bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-1 relative h-[380px] transition-all duration-300">
+                    <!-- Chart Content (Same SVG) -->
+                    <div class="absolute top-4 left-4 flex gap-1 z-10">
+                        <button
+                            class="px-2 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white text-[10px] rounded border border-gray-200 dark:border-zinc-700 font-medium">1D</button>
+                        <button class="px-2 py-1 text-gray-500 hover:text-white text-[10px] transition">1W</button>
+                    </div>
+                    <div class="w-full h-full bg-gray-50 dark:bg-[#0d0d0f] rounded-xl overflow-hidden relative">
+                        <svg class="w-full h-full p-4" preserveAspectRatio="none">
+                            <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#333" stroke-dasharray="2" opacity="0.1" />
+                            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#333" stroke-dasharray="2" opacity="0.1" />
+                            <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#333" stroke-dasharray="2" opacity="0.1" />
+                            <path
+                                d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60"
+                                fill="none" stroke="#6366f1" stroke-width="2" />
+                            <path
+                                d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60 V350 H0 Z"
+                                fill="url(#chartGrad)" />
+                            <defs>
+                                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stop-color="#6366f1" stop-opacity="0.3" />
+                                    <stop offset="1" stop-color="#6366f1" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Right: Zones (Pro Only) -->
+                <div
+                    class="pro-element w-full lg:w-[45%] bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col h-[380px]">
+                    <div class="flex justify-between items-end mb-4">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Structural Zones</h3>
+                        <span class="text-[10px] text-gray-400 font-mono">Relative Positioning</span>
+                    </div>
+                    <div class="flex-1 relative w-full rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900"
+                        id="zone-container"></div>
+                    <div class="flex justify-between text-[10px] font-mono text-gray-400 mt-2 px-1">
+                        <span>1490</span><span>1550</span><span>1610</span></div>
+                </div>
+            </section>
+
+            <!-- D. MARKET FOCUS (Shared) -->
+            <section class="bg-warning/10 border-l-4 border-warning p-4 rounded-r-lg flex items-start gap-3">
+                <div class="mt-0.5"><svg class="w-5 h-5 text-warning" fill="none" stroke="currentColor"
+                        viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg></div>
+                <div>
+                    <h4 class="text-xs font-bold text-warning uppercase tracking-widest mb-1 pro-element">Market Focus
+                    </h4>
+                    <h4 class="text-xs font-bold text-warning uppercase tracking-widest mb-1 lite-element">Critical
+                        Level</h4>
+                    <p class="text-sm font-medium text-gray-800 dark:text-gray-200">Holding above <span
+                            class="font-mono font-bold">1535</span> remains critical for the price to keep going up.</p>
+                </div>
+            </section>
+
+            <!-- E. PRO SCENARIOS / LITE FORECAST -->
+            <section>
+                <!-- PRO Header -->
+                <div class="flex items-center justify-between mb-4 px-1 pro-element">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Probabilistic Scenarios</h3>
+                    <span
+                        class="text-[10px] bg-gray-100 dark:bg-zinc-900 text-gray-500 px-2 py-1 rounded border border-gray-200 dark:border-zinc-800">Sum:
+                        100%</span>
+                </div>
+                <!-- LITE Header -->
+                <div class="flex items-center justify-between mb-4 px-1 lite-element">
+                    <h3 class="text-xl font-bold text-gray-900 dark:text-white">AI Forecast</h3>
+                </div>
+
+                <!-- PRO GRID -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pro-element">
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-success/30 rounded-2xl p-6 relative scenario-primary dark:shadow-none">
+                        <div
+                            class="absolute -top-3 left-6 bg-success text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg">
+                            Primary</div>
+                        <div class="flex justify-between items-start mb-4 mt-2"><span
+                                class="font-mono text-2xl text-gray-900 dark:text-white font-bold">70%</span></div>
+                        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug mb-6">Bullish
+                            continuation toward resistance structure.</h4>
+                        <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                            <div class="text-[10px] text-danger uppercase font-bold mb-1">Invalidation</div>
+                            <div class="font-mono text-xs text-danger/80">Close Below 1500</div>
+                        </div>
+                    </div>
+                    <!-- Secondary & Tail (Hidden in snippet for brevity, they exist in full implementation) -->
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 opacity-75">
+                        <span
+                            class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-1 rounded font-bold uppercase">Secondary
+                            20%</span>
+                        <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-2">Range-bound consolidation.
+                        </h4>
+                    </div>
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 opacity-75">
+                        <span
+                            class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-1 rounded font-bold uppercase">Tail
+                            10%</span>
+                        <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 mt-2">Bearish Breakdown.</h4>
+                    </div>
+                </div>
+
+                <!-- LITE CARD (Simple Summary) -->
+                <div class="bg-white dark:bg-[#18181b] border border-success/30 rounded-2xl p-8 lite-element">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 rounded-full bg-success/20 flex items-center justify-center">
+                            <svg class="w-6 h-6 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                    d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                        </div>
+                        <div>
+                            <h3 class="text-2xl font-bold text-gray-900 dark:text-white">Likely to Rise</h3>
+                            <p class="text-sm text-gray-500">70% probability based on current data.</p>
+                        </div>
+                    </div>
+                    <p class="text-gray-600 dark:text-gray-300 leading-relaxed text-lg mb-6">
+                        Reliance is looking strong. Smart investors are buying, and the price just broke through a key
+                        ceiling. We expect it to continue going up as long as it stays above <strong>1535</strong>.
+                    </p>
+                    <div class="flex gap-4">
+                        <div
+                            class="px-4 py-2 bg-gray-100 dark:bg-zinc-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+                            Target: ~1620</div>
+                        <div
+                            class="px-4 py-2 bg-gray-100 dark:bg-zinc-800 rounded-lg text-sm text-gray-600 dark:text-gray-300">
+                            Stop Loss: 1500</div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- F. TECH MATRIX (Pro Only) -->
+            <section
+                class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 pro-element">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Technical Intelligence Matrix
+                </h3>
+                <div class="grid grid-cols-4 gap-6">
+                    <div class="space-y-2">
+                        <div class="text-[10px] text-primary-500 font-bold uppercase border-b border-zinc-800 pb-1">
+                            Oscillators</div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">RSI</span><span
+                                class="font-mono text-gray-300">62.9</span></div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="text-[10px] text-primary-500 font-bold uppercase border-b border-zinc-800 pb-1">
+                            Trends</div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">MACD</span><span
+                                class="font-mono text-danger">-4.1</span></div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="text-[10px] text-primary-500 font-bold uppercase border-b border-zinc-800 pb-1">
+                            Averages</div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">SMA50</span><span
+                                class="font-mono text-success">1480</span></div>
+                    </div>
+                    <div class="space-y-2">
+                        <div class="text-[10px] text-primary-500 font-bold uppercase border-b border-zinc-800 pb-1">
+                            Pivots</div>
+                        <div class="flex justify-between text-sm"><span class="text-gray-500">P</span><span
+                                class="font-mono text-gray-300">1550</span></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- G. TABBED DEEP DIVE (Shared) -->
+            <section
+                class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden min-h-[300px]">
+                <div
+                    class="flex border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 overflow-x-auto">
+                    <button onclick="tab('ai')" id="btn-ai"
+                        class="tab-btn active px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">AI
+                        Analysis</button>
+                    <button onclick="tab('factors')" id="btn-factors"
+                        class="tab-btn px-6 py-4 text-sm font-medium text-gray-500">Key Factors</button>
+                </div>
+                <div class="p-6 md:p-8">
+                    <div id="tab-ai" class="tab-content">
+                        <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-mono text-sm mb-6 pro-element">
+                            "RELIANCE structure indicates bullish bias constrained by neutral momentum. Primary
+                            probabilistic path favors continuation > 1535."
+                        </p>
+                        <p class="text-gray-600 dark:text-gray-300 leading-relaxed text-sm mb-6 lite-element">
+                            Reliance is showing strong signs of growth. The data suggests it will continue to rise as
+                            long as it doesn't drop below 1535.
+                        </p>
+                    </div>
+                    <div id="tab-factors" class="tab-content hidden">
+                        <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                            <li>• Strong institutional buying volume.</li>
+                            <li>• Positive earnings surprise.</li>
+                        </ul>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- RIGHT DRAWER (Shared) -->
+    <aside id="drawer"
+        class="fixed top-24 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer peek z-40 flex flex-col shadow-2xl">
+        <div class="absolute -left-3 top-1/2 w-3 h-12 bg-primary-500 rounded-l-md cursor-pointer flex items-center justify-center text-white"
+            onclick="toggleDrawer()"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg></div>
+        <div
+            class="p-4 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Context</span><button
+                onclick="toggleDrawer()" class="text-gray-400 hover:text-white">X</button></div>
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div class="p-3 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-lg">
+                <div class="flex justify-between text-gray-900 dark:text-white font-bold text-sm">
+                    <span>RELIANCE</span><span class="text-success">Bullish</span></div>
+                <div class="text-xs text-gray-500 mt-1 font-mono">1556.50</div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        function toggleDrawer() { const d = document.getElementById('drawer'); d.classList.remove('peek'); d.classList.toggle('closed'); d.classList.toggle('open'); }
+        setTimeout(() => { document.getElementById('drawer').classList.remove('peek'); document.getElementById('drawer').classList.add('closed'); }, 2000);
+        function tab(id) {
+            ['ai', 'factors'].forEach(t => document.getElementById('tab-' + t).classList.add('hidden'));
+            document.getElementById('tab-' + id).classList.remove('hidden');
+            ['btn-ai', 'btn-factors'].forEach(b => { document.getElementById(b).classList.remove('active', 'text-gray-900', 'dark:text-white'); document.getElementById(b).classList.add('text-gray-500'); });
+            document.getElementById('btn-' + id).classList.add('active', 'text-gray-900', 'dark:text-white');
+        }
+
+        // --- MODE TOGGLE LOGIC ---
+        function setMode(mode) {
+            const body = document.body;
+            const slider = document.getElementById('mode-slider');
+            const chartPanel = document.getElementById('chart-panel');
+
+            if (mode === 'lite') {
+                body.classList.remove('mode-pro');
+                body.classList.add('mode-lite');
+                slider.style.transform = 'translateX(0px)';
+                // Chart takes full width in Lite
+                if (chartPanel) { chartPanel.classList.remove('lg:w-[55%]'); chartPanel.classList.add('w-full'); }
+            } else {
+                body.classList.remove('mode-lite');
+                body.classList.add('mode-pro');
+                slider.style.transform = 'translateX(100%)'; // 58px width -> slide right
+                // Chart takes 55% in Pro
+                if (chartPanel) { chartPanel.classList.remove('w-full'); chartPanel.classList.add('lg:w-[55%]'); }
+
+                // Render Zones (only needed for Pro)
+                renderZones();
+            }
+        }
+
+        const renderZones = () => {
+            const container = document.getElementById('zone-container');
+            if (!container || container.children.length > 0) return; // Don't re-render
+
+            const data = { price: 1556.5, support: [1500, 1535], value: [1535, 1570], resistance: [1570, 1600] };
+            const min = 1480, max = 1620, range = max - min;
+            const getPct = (v) => ((v - min) / range) * 100;
+            const width = (s, e) => ((e - s) / range) * 100;
+
+            const addZone = (s, e, cls, txt) => {
+                const d = document.createElement('div');
+                d.className = `absolute top-0 bottom-0 flex items-center justify-center text-[10px] font-mono font-bold ${cls} border-r border-white/5`;
+                d.style.left = `${getPct(s)}%`; d.style.width = `${width(s, e)}%`;
+                d.innerText = txt;
+                container.appendChild(d);
+            };
+            addZone(data.support[0], data.support[1], 'bg-gray-100 dark:bg-zinc-800 text-gray-400 border-r border-gray-300 dark:border-zinc-700', 'SUP');
+            addZone(data.value[0], data.value[1], 'bg-primary-500/10 text-primary-500 border-x border-primary-500/20', 'VAL');
+            addZone(data.resistance[0], data.resistance[1], 'bg-warning/10 text-warning border-l border-warning/20', 'RES');
+
+            const m = document.createElement('div');
+            m.className = 'absolute top-0 bottom-0 w-0.5 bg-gray-900 dark:bg-white z-20 shadow-[0_0_10px_white]';
+            m.style.left = `${getPct(data.price)}%`;
+            container.appendChild(m);
+        }
+
+        // Init
+        setMode('lite'); 
+    </script>
+</body>
+
+</html>

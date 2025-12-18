@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Institutional Risk Desk v2</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        bg: '#020617',
+                        panel: '#0f172a',
+                        border: '#1e293b',
+                        text: '#94a3b8',
+                        heading: '#e2e8f0',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .data-value {
+            font-family: 'JetBrains Mono', monospace;
+            color: #e2e8f0;
+        }
+
+        .label-sm {
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            font-weight: 700;
+        }
+
+        .bg-grid {
+            background-image: linear-gradient(to right, #1e293b 1px, transparent 1px), linear-gradient(to bottom, #1e293b 1px, transparent 1px);
+            background-size: 40px 40px;
+            opacity: 0.05;
+        }
+
+        /* Tooltip Logic */
+        .tooltip-trigger:hover .tooltip-content {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .tooltip-content {
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.2s;
+            transform: translateY(5px);
+        }
+
+        /* Scenario Glow for Primary */
+        .scenario-primary {
+            box-shadow: 0 0 20px rgba(16, 185, 129, 0.05);
+            border-color: rgba(16, 185, 129, 0.3);
+        }
+    </style>
+</head>
+
+<body class="min-h-screen flex flex-col font-sans selection:bg-slate-700 selection:text-white">
+
+    <div class="fixed inset-0 bg-grid pointer-events-none"></div>
+
+    <main class="max-w-6xl mx-auto w-full p-6 md:p-12 relative z-10">
+
+        <!-- 1. HEADER & REGIME STRIP -->
+        <header class="flex flex-col md:flex-row justify-between items-end border-b border-border pb-6 mb-8 gap-6">
+            <div class="w-full md:w-auto">
+                <div class="flex items-center gap-3 mb-2">
+                    <span
+                        class="text-xs font-mono text-slate-500 bg-panel px-2 py-1 rounded border border-border">NSE</span>
+                    <h1 class="text-3xl font-semibold text-heading tracking-tight">RELIANCE.NS</h1>
+                </div>
+
+                <!-- NEW: Regime Timeline Strip (No Candles) -->
+                <div class="mt-4">
+                    <div class="flex justify-between text-[10px] text-slate-600 font-mono mb-1">
+                        <span>90D AGO</span>
+                        <span>CURRENT REGIME</span>
+                    </div>
+                    <div class="flex h-2 w-full md:w-96 rounded-sm overflow-hidden gap-[1px]">
+                        <!-- Historical Blocks (Abstract) -->
+                        <div class="bg-emerald-900/30 w-12" title="Bullish"></div>
+                        <div class="bg-emerald-900/40 w-8" title="Bullish"></div>
+                        <div class="bg-slate-800 w-16" title="Neutral"></div>
+                        <div class="bg-rose-900/30 w-6" title="Bearish"></div>
+                        <div class="bg-slate-800 w-12" title="Neutral"></div>
+                        <div class="bg-blue-900/40 w-10" title="Compression"></div>
+                        <div class="bg-emerald-500 w-full" title="Current: Bullish Breakout"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-right">
+                <div class="text-4xl font-mono font-medium text-heading tracking-tighter">1556.50</div>
+                <div class="text-xs text-slate-500 mt-1 font-mono">LATEST CLOSE</div>
+            </div>
+        </header>
+
+        <!-- 2. MARKET STATE PANEL (Hierarchical Layout) -->
+        <section class="grid grid-cols-12 gap-4 mb-10">
+
+            <!-- Trend Bias (Dominant - 4 Cols) -->
+            <div
+                class="col-span-12 md:col-span-4 bg-panel border border-emerald-500/20 p-5 rounded-md flex flex-col justify-between relative overflow-hidden">
+                <div class="absolute top-0 right-0 w-16 h-16 bg-emerald-500/10 rounded-bl-full"></div>
+                <div class="label-sm text-emerald-500/80 mb-1">Primary Regime</div>
+                <div class="text-2xl font-bold text-emerald-400 tracking-tight">Bullish Bias</div>
+                <div class="text-xs text-emerald-500/60 mt-2 font-mono">STRUCTURE: HIGHER HIGHS</div>
+            </div>
+
+            <!-- Secondary Metrics (8 Cols grid) -->
+            <div class="col-span-12 md:col-span-8 grid grid-cols-3 gap-4">
+
+                <div class="bg-panel border border-border p-4 rounded-md">
+                    <div class="label-sm mb-2">Momentum</div>
+                    <div
+                        class="inline-flex items-center gap-2 px-2 py-1 rounded bg-slate-800/50 text-slate-300 text-sm font-medium border border-slate-700">
+                        Neutral
+                    </div>
+                </div>
+
+                <div class="bg-panel border border-border p-4 rounded-md">
+                    <div class="label-sm mb-2">Volatility</div>
+                    <div
+                        class="inline-flex items-center gap-2 px-2 py-1 rounded bg-blue-950/20 text-blue-300 text-sm font-medium border border-blue-900/30">
+                        Compression
+                    </div>
+                </div>
+
+                <!-- Confidence with Tooltip -->
+                <div class="bg-panel border border-border p-4 rounded-md relative tooltip-trigger cursor-help">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="label-sm border-b border-dashed border-slate-600">Confidence</span>
+                        <span class="font-mono text-xs text-heading">72%</span>
+                    </div>
+                    <div class="w-full bg-slate-800 h-1.5 rounded-full overflow-hidden">
+                        <div class="bg-slate-400 h-full w-[72%]"></div>
+                    </div>
+
+                    <!-- Tooltip Content -->
+                    <div
+                        class="tooltip-content absolute bottom-full left-0 mb-2 w-64 bg-slate-800 border border-slate-700 p-3 rounded shadow-xl z-20">
+                        <div class="text-[10px] text-slate-300 leading-relaxed">
+                            <strong class="text-white">Model Confidence Score</strong><br>
+                            Represents historical directional reliability adjusted for current signal conflict and
+                            volatility regime. Not a probability of profit.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. ZONE VISUALIZER (Enhanced Labels) -->
+        <section class="mb-12">
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="label-sm text-slate-400">Structural Price Zones</h3>
+            </div>
+
+            <div class="relative h-16 bg-panel border border-border rounded-md w-full overflow-hidden mb-2"
+                id="zone-container">
+                <!-- JS Renders here -->
+            </div>
+            <div class="flex justify-between text-[10px] font-mono text-slate-600 px-1">
+                <span>1490</span>
+                <span>1550</span>
+                <span>1610</span>
+            </div>
+        </section>
+
+        <!-- 4. MARKET FOCUS (Micro-Panel) -->
+        <section class="mb-6">
+            <div
+                class="bg-gradient-to-r from-amber-900/20 to-transparent border-l-2 border-amber-500 pl-4 py-3 rounded-r-md">
+                <span class="label-sm text-amber-500 block mb-1">Market Focus</span>
+                <p class="text-sm text-slate-200">Holding above <span class="font-mono text-amber-200">1535</span>
+                    (Value Area High) remains critical for bullish continuation thesis.</p>
+            </div>
+        </section>
+
+        <!-- 5. SCENARIO CARDS (Weighted Visuals) -->
+        <section class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
+
+            <!-- Scenario 1: Primary (Glow Effect) -->
+            <div class="bg-panel border rounded-md p-5 flex flex-col justify-between scenario-primary relative">
+                <div
+                    class="absolute -top-3 left-4 bg-emerald-950 border border-emerald-900 text-emerald-400 text-[10px] px-2 py-0.5 rounded uppercase font-bold tracking-wider">
+                    Primary Scenario</div>
+                <div>
+                    <div class="flex justify-between items-start mb-4 mt-2">
+                        <span class="font-mono text-xl text-heading font-bold">70%</span>
+                    </div>
+                    <h4 class="text-sm font-medium text-heading leading-snug mb-6">Bullish continuation toward
+                        resistance structure.</h4>
+
+                    <div class="bg-bg border border-border p-3 rounded mb-4">
+                        <div class="label-sm mb-1 text-slate-500">Trigger</div>
+                        <div class="text-xs text-slate-300">Hold > <span class="font-mono">1535</span> & Break <span
+                                class="font-mono">1570</span></div>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-border bg-rose-950/10 -mx-5 -mb-5 p-5 rounded-b-md">
+                    <div class="flex items-center gap-2 mb-1">
+                        <svg class="w-3 h-3 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div class="label-sm text-rose-400 font-bold">STRUCTURAL INVALIDATION</div>
+                    </div>
+                    <div class="font-mono text-xs text-rose-200/80">Close Below 1500</div>
+                </div>
+            </div>
+
+            <!-- Scenario 2: Secondary (Standard) -->
+            <div
+                class="bg-panel border border-border rounded-md p-5 flex flex-col justify-between opacity-90 hover:opacity-100 transition">
+                <div>
+                    <div class="flex justify-between items-start mb-4">
+                        <span
+                            class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded uppercase">Secondary</span>
+                        <span class="font-mono text-sm text-slate-400 font-bold">20%</span>
+                    </div>
+                    <h4 class="text-sm font-medium text-slate-300 leading-snug mb-6">Range-bound consolidation within
+                        value area.</h4>
+                    <div class="bg-bg border border-border p-3 rounded mb-4">
+                        <div class="label-sm mb-1 text-slate-500">Trigger</div>
+                        <div class="text-xs text-slate-400">Range <span class="font-mono">1535–1570</span></div>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-border">
+                    <div class="label-sm text-rose-400 mb-1">Invalidation</div>
+                    <div class="font-mono text-xs text-slate-400">Breakout of Range</div>
+                </div>
+            </div>
+
+            <!-- Scenario 3: Tail Risk (Muted) -->
+            <div
+                class="bg-panel border border-border rounded-md p-5 flex flex-col justify-between opacity-60 hover:opacity-100 transition grayscale hover:grayscale-0">
+                <div>
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="text-[10px] bg-slate-800 text-slate-400 px-2 py-0.5 rounded uppercase">Tail
+                            Risk</span>
+                        <span class="font-mono text-sm text-slate-400 font-bold">10%</span>
+                    </div>
+                    <h4 class="text-sm font-medium text-slate-300 leading-snug mb-6">Bearish reversal and structure
+                        breakdown.</h4>
+                    <div class="bg-bg border border-border p-3 rounded mb-4">
+                        <div class="label-sm mb-1 text-slate-500">Trigger</div>
+                        <div class="text-xs text-slate-400">Impulsive break < <span class="font-mono">1500</span></div>
+                    </div>
+                </div>
+                <div class="pt-3 border-t border-border">
+                    <div class="label-sm text-emerald-500 mb-1">Invalidation</div>
+                    <div class="font-mono text-xs text-slate-400">Recovery > 1535</div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- 6. RISK & NARRATIVE (Trust Badges) -->
+        <section class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <div class="border-t border-border pt-4">
+                <h3 class="label-sm text-slate-400 mb-4">Active Risk Factors</h3>
+                <ul class="space-y-3">
+                    <li class="flex items-start gap-3 text-sm text-slate-400">
+                        <span class="text-rose-500 mt-1">●</span>
+                        <span>Neutral momentum limits immediate upside.</span>
+                    </li>
+                    <li class="flex items-start gap-3 text-sm text-slate-400">
+                        <span class="text-rose-500 mt-1">●</span>
+                        <span>Low volatility reduces conviction on breakouts.</span>
+                    </li>
+                </ul>
+            </div>
+
+            <div class="bg-panel border border-dashed border-slate-700 p-6 rounded-md">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <div class="w-1.5 h-1.5 bg-blue-500 rounded-full animate-pulse"></div>
+                        <span class="label-sm text-blue-400">Derived Narrative</span>
+                    </div>
+                    <span
+                        class="text-[9px] bg-slate-800 text-slate-500 px-1.5 py-0.5 rounded border border-slate-700">DETERMINISTIC
+                        • NON-AUTHORITATIVE</span>
+                </div>
+                <p class="text-sm text-slate-300 leading-relaxed font-mono">
+                    "RELIANCE shows a bullish bias. Primary scenario favors continuation, contingent on holding the 1535
+                    pivot. Failure to hold 1500 invalidates the structural thesis."
+                </p>
+            </div>
+        </section>
+
+        <!-- 7. FOOTER: Reliability (Added Baseline/Edge) -->
+        <footer class="border-t border-border pt-6 pb-12">
+            <div class="grid grid-cols-4 gap-4 text-[10px] font-mono text-slate-500">
+                <div>
+                    <span class="block text-slate-600 mb-1">LOOKBACK</span>
+                    <span class="text-slate-400">90 DAYS</span>
+                </div>
+                <div>
+                    <span class="block text-slate-600 mb-1">DIRECTIONAL ACCURACY</span>
+                    <span class="text-slate-400">68.0%</span>
+                </div>
+                <div>
+                    <span class="block text-slate-600 mb-1">BASELINE (RANDOM)</span>
+                    <span class="text-slate-400">50.0%</span>
+                </div>
+                <div>
+                    <span class="block text-slate-600 mb-1">EXCESS EDGE</span>
+                    <span class="text-emerald-500 font-bold">+18.0%</span>
+                </div>
+            </div>
+        </footer>
+
+    </main>
+
+    <script>
+        const data = {
+            price: 1556.5,
+            zones: { support: [1500, 1535], value: [1535, 1570], resistance: [1570, 1600] }
+        };
+
+        const renderZones = () => {
+            const container = document.getElementById('zone-container');
+            const { support, value, resistance } = data.zones;
+            const min = 1480, max = 1620, range = max - min;
+
+            const getPct = (val) => ((val - min) / range) * 100;
+            const getWidth = (start, end) => ((end - start) / range) * 100;
+
+            const createZone = (start, end, colorClass, label, subLabel) => {
+                const div = document.createElement('div');
+                div.className = `absolute top-0 bottom-0 flex flex-col items-center justify-center text-[10px] font-mono ${colorClass} border-r border-opacity-20`;
+                div.style.left = `${getPct(start)}%`;
+                div.style.width = `${getWidth(start, end)}%`;
+                div.innerHTML = `<span class="opacity-80 font-bold">${label}</span><span class="text-[8px] opacity-50 uppercase tracking-tight">${subLabel}</span>`;
+                return div;
+            };
+
+            container.appendChild(createZone(support[0], support[1], 'bg-slate-800/50 text-slate-400 border-slate-600', 'SUPPORT', '(Acceptance)'));
+            container.appendChild(createZone(value[0], value[1], 'bg-blue-900/10 text-blue-400 border-blue-800', 'VALUE', '(Neutral)'));
+            container.appendChild(createZone(resistance[0], resistance[1], 'bg-amber-900/10 text-amber-400 border-amber-800', 'RESIST', '(Rejection)'));
+
+            const marker = document.createElement('div');
+            marker.className = 'absolute top-0 bottom-0 w-0.5 bg-white z-20 shadow-[0_0_10px_rgba(255,255,255,0.5)]';
+            marker.style.left = `${getPct(data.price)}%`;
+
+            const badge = document.createElement('div');
+            badge.className = 'absolute -top-3 -left-6 bg-white text-black text-[10px] px-1.5 rounded font-bold font-mono';
+            badge.innerText = data.price.toFixed(2);
+            marker.appendChild(badge);
+            container.appendChild(marker);
+        };
+
+        document.addEventListener('DOMContentLoaded', renderZones);
+    </script>
+</body>
+
+</html>

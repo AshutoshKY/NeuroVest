@@ -1,0 +1,547 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Reliance Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        primary: { 500: '#6366f1', 600: '#4f46e5' },
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'fade-in': 'fadeIn 0.4s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: { '0%': { opacity: '0', transform: 'translateY(10px)' }, '100%': { opacity: '1', transform: 'translateY(0)' } },
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.peek {
+            transform: translateX(92%);
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+
+        .scenario-primary {
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+
+        .tab-btn.active {
+            border-bottom: 2px solid #6366f1;
+            color: var(--text-active);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans">
+
+    <!-- 1. POSITIONING BANNER -->
+    <div
+        class="w-full h-8 bg-white/90 dark:bg-[#09090b]/90 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-center backdrop-blur-sm fixed top-0 z-[60]">
+        <p class="text-[10px] font-mono text-gray-500 uppercase tracking-wide">
+            <span class="text-primary-500 font-bold">SYSTEM NOTICE:</span> Structured market state engine. Visualizing
+            probabilistic scenarios. Not advice.
+        </p>
+    </div>
+
+    <!-- 2. TOP NAV -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur fixed top-8 w-full z-50 flex items-center justify-between px-6 transition-colors duration-300">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-primary-500 border-b-2 border-primary-500 font-bold">Dashboard</a>
+                <a href="watchlist.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">Watchlist</a>
+                <a href="history.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">History</a>
+                <a href="docs.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">Docs</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-primary-600 dark:text-primary-400">4/5 Analyses Left</span>
+            </div>
+            <button onclick="document.documentElement.classList.toggle('dark')"
+                class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                    </path>
+                </svg>
+            </button>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-white">TD</a>
+            <button onclick="toggleDrawer()"
+                class="text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- 3. MAIN CONTENT -->
+    <main class="flex-1 pt-32 relative overflow-y-auto p-4 md:p-8">
+        <div class="max-w-6xl mx-auto space-y-8 animate-fade-in">
+
+            <!-- A. HEADER & REGIME -->
+            <header
+                class="flex flex-col md:flex-row justify-between items-end border-b border-gray-200 dark:border-zinc-800 pb-6 gap-6">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <span
+                            class="text-xs font-mono text-gray-500 bg-gray-100 dark:bg-zinc-900 px-2 py-1 rounded border border-gray-200 dark:border-zinc-800">NSE</span>
+                        <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">RELIANCE.NS</h1>
+                    </div>
+                    <div class="mt-3">
+                        <div class="flex justify-between text-[10px] text-gray-500 font-mono mb-1">
+                            <span>90D LOOKBACK</span>
+                            <span>CURRENT REGIME</span>
+                        </div>
+                        <div class="flex h-2 w-full md:w-80 rounded-sm overflow-hidden gap-[1px]">
+                            <div class="bg-success/30 w-12" title="Bullish"></div>
+                            <div class="bg-success/40 w-8" title="Bullish"></div>
+                            <div class="bg-gray-400/30 w-16" title="Neutral"></div>
+                            <div class="bg-danger/30 w-6" title="Bearish"></div>
+                            <div class="bg-gray-400/30 w-12" title="Neutral"></div>
+                            <div class="bg-primary-500/40 w-10" title="Compression"></div>
+                            <div class="bg-success/80 w-full" title="Current: Bullish Breakout"></div>
+                        </div>
+                        <span class="text-[10px] text-primary-500 font-bold font-mono mt-1 block">REGIME: BREAKOUT
+                            (ACCUMULATION)</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-5xl font-mono font-medium text-gray-900 dark:text-white tracking-tighter">1556.50
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1 font-mono">LATEST CLOSE (+2.47%)</div>
+                </div>
+            </header>
+
+            <!-- B. MARKET STATE (Grid) -->
+            <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-success/20 p-5 rounded-2xl relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 w-20 h-20 bg-success/5 rounded-bl-full group-hover:bg-success/10 transition">
+                    </div>
+                    <div class="text-[10px] uppercase font-bold text-success mb-1">Primary Bias</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Bullish</div>
+                    <div class="text-[10px] text-success/70 mt-2 font-mono">STRUCTURE: HIGHER HIGHS</div>
+                </div>
+                <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Momentum</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-300">Neutral</span>
+                </div>
+                <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Volatility</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">Compression</span>
+                </div>
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl flex flex-col justify-center">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] uppercase font-bold text-gray-500">Confidence</span>
+                        <span class="font-mono text-sm font-bold text-gray-900 dark:text-white">72%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-primary-500 h-full w-[72%]"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- C. CHART & ZONES (Hybrid Layout) -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Left: Chart (2 Cols) -->
+                <div
+                    class="lg:col-span-2 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-1 relative h-[320px]">
+                    <div class="absolute top-4 left-4 flex gap-1 z-10">
+                        <button
+                            class="px-2 py-1 bg-gray-100 dark:bg-zinc-800 text-gray-900 dark:text-white text-[10px] rounded border border-gray-200 dark:border-zinc-700 font-medium">1D</button>
+                        <button class="px-2 py-1 text-gray-500 hover:text-white text-[10px] transition">1W</button>
+                    </div>
+                    <div class="w-full h-full bg-gray-50 dark:bg-[#0d0d0f] rounded-xl overflow-hidden relative">
+                        <svg class="w-full h-full" preserveAspectRatio="none">
+                            <defs>
+                                <linearGradient id="chartGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0" stop-color="#6366f1" stop-opacity="0.3" />
+                                    <stop offset="1" stop-color="#6366f1" stop-opacity="0" />
+                                </linearGradient>
+                            </defs>
+                            <!-- Grid -->
+                            <line x1="0" y1="25%" x2="100%" y2="25%" stroke="#333" stroke-dasharray="4" opacity="0.2" />
+                            <line x1="0" y1="50%" x2="100%" y2="50%" stroke="#333" stroke-dasharray="4" opacity="0.2" />
+                            <line x1="0" y1="75%" x2="100%" y2="75%" stroke="#333" stroke-dasharray="4" opacity="0.2" />
+                            <!-- Line -->
+                            <path
+                                d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60"
+                                fill="none" stroke="#6366f1" stroke-width="2" />
+                            <path
+                                d="M0,250 C50,240 100,260 150,200 C200,150 250,180 300,160 C350,140 400,150 450,120 C500,90 550,130 600,100 C650,70 700,90 800,60 V350 H0 Z"
+                                fill="url(#chartGrad)" />
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Right: Structure Zone (1 Col) -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 flex flex-col">
+                    <div class="flex justify-between items-end mb-4">
+                        <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Structural Zones</h3>
+                        <span class="text-[10px] text-gray-400 font-mono">No Time Axis</span>
+                    </div>
+                    <div class="flex-1 relative w-full rounded-xl overflow-hidden border border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900"
+                        id="zone-container">
+                        <!-- Zones rendered via JS -->
+                    </div>
+                    <div class="flex justify-between text-[10px] font-mono text-gray-400 mt-2">
+                        <span>1490</span><span>1550</span><span>1610</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- D. SCENARIOS -->
+            <section>
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Probabilistic Scenarios</h3>
+                    <span
+                        class="text-[10px] bg-gray-100 dark:bg-zinc-900 text-gray-500 px-2 py-1 rounded border border-gray-200 dark:border-zinc-800">Sum:
+                        100%</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Primary -->
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-success/30 rounded-2xl p-6 relative scenario-primary dark:shadow-none">
+                        <div
+                            class="absolute -top-3 left-6 bg-success text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg">
+                            Primary</div>
+                        <div class="flex justify-between items-start mb-4 mt-2">
+                            <span class="font-mono text-2xl text-gray-900 dark:text-white font-bold">70%</span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug mb-6">Bullish
+                            continuation toward resistance structure.</h4>
+                        <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                            <div class="text-[10px] text-danger uppercase font-bold mb-1">Invalidation</div>
+                            <div class="font-mono text-xs text-danger/80">Close Below 1500</div>
+                        </div>
+                    </div>
+                    <!-- Secondary -->
+                    <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <span
+                                class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-1 rounded font-bold uppercase">Secondary</span>
+                            <span class="font-mono text-lg text-gray-500 font-bold">20%</span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 leading-snug mb-6">Range-bound
+                            consolidation within value area.</h4>
+                        <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                            <div class="text-[10px] text-danger uppercase font-bold mb-1">Invalidation</div>
+                            <div class="font-mono text-xs text-gray-500">Breakout of Range</div>
+                        </div>
+                    </div>
+                    <!-- Tail -->
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 opacity-75 hover:opacity-100 transition">
+                        <div class="flex justify-between items-start mb-4">
+                            <span
+                                class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-1 rounded font-bold uppercase">Tail
+                                Risk</span>
+                            <span class="font-mono text-lg text-gray-500 font-bold">10%</span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 leading-snug mb-6">Bearish
+                            reversal breakdown.</h4>
+                        <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                            <div class="text-[10px] text-success uppercase font-bold mb-1">Invalidation</div>
+                            <div class="font-mono text-xs text-gray-500">Recovery > 1535</div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- E. TABBED DEEP DIVE (AI, Key Factors, Risks) -->
+            <section
+                class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl overflow-hidden min-h-[400px]">
+                <div
+                    class="flex border-b border-gray-200 dark:border-zinc-800 bg-gray-50 dark:bg-zinc-900/50 overflow-x-auto">
+                    <button onclick="tab('ai')" id="btn-ai"
+                        class="tab-btn active px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">AI
+                        Analysis</button>
+                    <button onclick="tab('factors')" id="btn-factors"
+                        class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white">Key
+                        Factors</button>
+                    <button onclick="tab('risk')" id="btn-risk"
+                        class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white">Risks</button>
+                    <button onclick="tab('tech')" id="btn-tech"
+                        class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 hover:text-gray-900 dark:hover:text-white">Technicals</button>
+                </div>
+
+                <div class="p-6 md:p-8">
+                    <!-- AI Tab -->
+                    <div id="tab-ai" class="tab-content animate-fade-in">
+                        <div class="flex items-center gap-3 mb-4">
+                            <div class="w-2 h-2 bg-primary-500 rounded-full animate-pulse-slow"></div>
+                            <span class="text-xs font-bold text-primary-500 uppercase tracking-widest">System Narrative
+                                Output</span>
+                            <span
+                                class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-0.5 rounded ml-auto">READ
+                                ONLY</span>
+                        </div>
+                        <p class="text-gray-600 dark:text-gray-300 leading-relaxed font-mono text-sm mb-6">
+                            "RELIANCE structure indicates bullish bias constrained by neutral momentum. Primary
+                            probabilistic path favors continuation > 1535. Structural thesis invalidated on < 1500
+                                close. Correlation with NIFTY Energy sector remains high (0.89), suggesting sector-wide
+                                tailwinds." </p>
+                                <div class="p-4 bg-primary-500/5 border border-primary-500/10 rounded-xl">
+                                    <h4 class="text-sm font-bold text-primary-600 dark:text-primary-400 mb-2">Prediction
+                                        Model Output</h4>
+                                    <p class="text-xs text-gray-500">Projected Volatility: <span
+                                            class="text-gray-900 dark:text-white">12.5% (Low)</span></p>
+                                    <p class="text-xs text-gray-500">Upside Target (Statistical): <span
+                                            class="text-gray-900 dark:text-white">1620.00</span></p>
+                                </div>
+                    </div>
+
+                    <!-- Factors Tab -->
+                    <div id="tab-factors" class="tab-content hidden animate-fade-in">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div class="p-4 border border-gray-200 dark:border-zinc-800 rounded-xl">
+                                <h4 class="text-sm font-bold text-success mb-2">Bullish Drivers</h4>
+                                <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <li>• Strong institutional buying volume observed in last 3 sessions.</li>
+                                    <li>• Positive earnings surprise from retail division.</li>
+                                    <li>• Breakout above 50-day Moving Average.</li>
+                                </ul>
+                            </div>
+                            <div class="p-4 border border-gray-200 dark:border-zinc-800 rounded-xl">
+                                <h4 class="text-sm font-bold text-gray-500 mb-2">Neutral Factors</h4>
+                                <ul class="space-y-2 text-sm text-gray-600 dark:text-gray-400">
+                                    <li>• Global crude oil prices consolidating.</li>
+                                    <li>• RSI indicating neither overbought nor oversold conditions.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Risk Tab -->
+                    <div id="tab-risk" class="tab-content hidden animate-fade-in">
+                        <h3 class="text-sm font-bold text-gray-500 uppercase tracking-widest mb-4">Active Risk Factors
+                        </h3>
+                        <div class="space-y-3 max-w-3xl">
+                            <div class="flex gap-4 p-4 bg-danger/5 border border-danger/10 rounded-xl">
+                                <svg class="w-5 h-5 text-danger shrink-0 mt-0.5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                                    </path>
+                                </svg>
+                                <div>
+                                    <h4 class="text-gray-900 dark:text-white font-bold text-sm">Momentum Divergence</h4>
+                                    <p class="text-gray-500 text-xs mt-1">Price is making higher highs while MACD
+                                        histogram is making lower highs, indicating weakening upside force.</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-4 p-4 bg-warning/5 border border-warning/10 rounded-xl">
+                                <svg class="w-5 h-5 text-warning shrink-0 mt-0.5" fill="none" stroke="currentColor"
+                                    viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                        d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                <div>
+                                    <h4 class="text-gray-900 dark:text-white font-bold text-sm">Sector Headwinds</h4>
+                                    <p class="text-gray-500 text-xs mt-1">NIFTY Energy index is facing resistance at
+                                        all-time highs.</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Technicals Tab -->
+                    <div id="tab-tech" class="tab-content hidden animate-fade-in">
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                            <div
+                                class="p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800">
+                                <div class="text-gray-500 text-xs mb-1">RSI (14)</div>
+                                <div class="text-2xl font-mono text-gray-900 dark:text-white">62.91</div>
+                                <div class="text-xs text-warning mt-1">Neutral</div>
+                            </div>
+                            <div
+                                class="p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800">
+                                <div class="text-gray-500 text-xs mb-1">MACD</div>
+                                <div class="text-2xl font-mono text-gray-900 dark:text-white">-4.10</div>
+                                <div class="text-xs text-danger mt-1">Bearish Divergence</div>
+                            </div>
+                            <div
+                                class="p-4 bg-gray-50 dark:bg-zinc-900 rounded border border-gray-200 dark:border-zinc-800">
+                                <div class="text-gray-500 text-xs mb-1">ATR (14)</div>
+                                <div class="text-2xl font-mono text-gray-900 dark:text-white">15.4</div>
+                                <div class="text-xs text-success mt-1">Low Volatility</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- RIGHT DRAWER -->
+    <aside id="drawer"
+        class="fixed top-24 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer peek z-40 flex flex-col shadow-2xl">
+        <!-- Handle -->
+        <div class="absolute -left-3 top-1/2 w-3 h-12 bg-primary-500 rounded-l-md cursor-pointer flex items-center justify-center text-white shadow-md hover:bg-primary-600 transition"
+            onclick="toggleDrawer()">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </div>
+
+        <div
+            class="p-4 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Context</span>
+            <button onclick="toggleDrawer()"
+                class="text-gray-400 hover:text-gray-900 dark:hover:text-white transition"><svg class="w-4 h-4"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div class="p-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl">
+                <div class="flex justify-between text-xs mb-2">
+                    <span class="text-gray-500">Analysis Limit</span>
+                    <span class="text-gray-900 dark:text-white font-bold">4 / 5</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-primary-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-gray-500 mb-3">Saved Scans</div>
+                <div class="space-y-2">
+                    <div
+                        class="p-3 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-lg hover:border-primary-500/50 cursor-pointer transition">
+                        <div class="flex justify-between text-gray-900 dark:text-white font-bold text-sm">
+                            <span>RELIANCE</span><span class="text-success">Bullish</span></div>
+                        <div class="text-xs text-gray-500 mt-1 font-mono">1556.50 • 2m ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <script>
+        // Drawer Logic
+        function toggleDrawer() {
+            const d = document.getElementById('drawer');
+            d.classList.remove('peek');
+            if (d.classList.contains('open')) { d.classList.remove('open'); d.classList.add('closed'); }
+            else { d.classList.remove('closed'); d.classList.add('open'); }
+        }
+        setTimeout(() => { document.getElementById('drawer').classList.remove('peek'); document.getElementById('drawer').classList.add('closed'); }, 2000);
+
+        // Tab Logic
+        function tab(id) {
+            ['ai', 'factors', 'risk', 'tech'].forEach(t => document.getElementById('tab-' + t).classList.add('hidden'));
+            document.getElementById('tab-' + id).classList.remove('hidden');
+
+            ['btn-ai', 'btn-factors', 'btn-risk', 'btn-tech'].forEach(b => {
+                document.getElementById(b).classList.remove('active', 'text-gray-900', 'dark:text-white');
+                document.getElementById(b).classList.add('text-gray-500');
+            });
+            document.getElementById('btn-' + id).classList.add('active', 'text-gray-900', 'dark:text-white');
+            document.getElementById('btn-' + id).classList.remove('text-gray-500');
+        }
+
+        // Zone Visualizer Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = { price: 1556.5, support: [1500, 1535], value: [1535, 1570], resistance: [1570, 1600] };
+            const container = document.getElementById('zone-container');
+            const min = 1480, max = 1620, range = max - min;
+
+            const getPct = (v) => ((v - min) / range) * 100;
+            const width = (s, e) => ((e - s) / range) * 100;
+
+            const addZone = (s, e, cls, txt) => {
+                const d = document.createElement('div');
+                d.className = `absolute top-0 bottom-0 flex items-center justify-center text-[10px] font-mono font-bold ${cls} border-r border-white/5`;
+                d.style.left = `${getPct(s)}%`; d.style.width = `${width(s, e)}%`;
+                d.innerText = txt;
+                container.appendChild(d);
+            };
+
+            addZone(data.support[0], data.support[1], 'bg-gray-100 dark:bg-zinc-800 text-gray-400 border-r border-gray-300 dark:border-zinc-700', 'SUP');
+            addZone(data.value[0], data.value[1], 'bg-primary-500/10 text-primary-500 border-x border-primary-500/20', 'VAL');
+            addZone(data.resistance[0], data.resistance[1], 'bg-warning/10 text-warning border-l border-warning/20', 'RES');
+
+            const m = document.createElement('div');
+            m.className = 'absolute top-0 bottom-0 w-0.5 bg-gray-900 dark:bg-white z-20 shadow-[0_0_10px_rgba(0,0,0,0.2)] dark:shadow-[0_0_10px_white]';
+            m.style.left = `${getPct(data.price)}%`;
+            container.appendChild(m);
+        });
+    </script>
+</body>
+
+</html>
