@@ -170,8 +170,8 @@ class StockAPIService:
         base_url = api['base_url']
         quote_endpoint = api['endpoints']['quote']
         
-        # Append .NS for Indian stocks if not present
-        if not ticker.endswith(('.NS', '.BO')):
+        # Append .NS for Indian stocks if not present (but NOT for indices like ^NSEI)
+        if not ticker.endswith(('.NS', '.BO')) and not ticker.startswith('^'):
             search_ticker = f"{ticker}.NS"
         else:
             search_ticker = ticker
@@ -380,8 +380,8 @@ class StockAPIService:
                     to_date = int(datetime.now().timestamp())
                     from_date = int((datetime.now() - timedelta(days=days)).timestamp())
                     
-                    # Append .NS for Indian stocks if not present
-                    if not ticker.endswith(('.NS', '.BO')):
+                    # Append .NS for Indian stocks if not present (but NOT for indices)
+                    if not ticker.endswith(('.NS', '.BO')) and not ticker.startswith('^'):
                         search_ticker = f"{ticker}.NS"
                     else:
                         search_ticker = ticker

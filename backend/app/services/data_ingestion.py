@@ -11,6 +11,7 @@ from app.scrapers.scraper_factory import load_scrapers
 from app.services.preprocessing import preprocessing_service
 from app.services.embeddings import embedding_service
 from app.services.stock_api_service import stock_api_service
+from app.services.smart_orchestrator import smart_orchestrator  # Smart API orchestration
 
 from app.core.database import get_db
 from sqlalchemy.orm import Session
@@ -97,8 +98,15 @@ class DataIngestionService:
                 "operation": "fetch_stock_data",
                 "ticker": ticker
             })
+            # Fetch stock data using Smart Orchestrator for better resilience
             
-            data = await stock_api_service.get_stock_data(ticker)
+            logger.info(f"Using Smart Orchestrator for {ticker}")
+            data = await smart_orchestrator.get_stock_data_enhanced(ticker)
+            
+            if data:
+                logger.info(f"✅ Smart Orchestrator fetched data for {ticker}: ${data.get('current_price', 'N/A')}")
+            else:
+                logger.warning(f"⚠️ Smart Orchestrator returned no data for {ticker}")
             
             duration_ms = int((time.time() - start_time) * 1000)
             
@@ -337,7 +345,7 @@ class DataIngestionService:
                 ticker=ticker,
                 company_name=company_name or ticker,
                 min_articles=3,
-                max_articles=5
+                max_articles=15
             )
             
             if articles:

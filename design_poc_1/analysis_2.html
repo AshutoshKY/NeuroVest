@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NeuroVest - Reliance Analysis</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace']
+                    },
+                    colors: {
+                        primary: { 500: '#6366f1', 600: '#4f46e5' },
+                        success: '#10b981',
+                        danger: '#ef4444',
+                        warning: '#f59e0b'
+                    },
+                    animation: {
+                        'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Drawer Transitions */
+        .drawer {
+            transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .drawer.closed {
+            transform: translateX(100%);
+        }
+
+        .drawer.open {
+            transform: translateX(0);
+        }
+
+        .drawer.peek {
+            transform: translateX(92%);
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #3f3f46;
+            border-radius: 3px;
+        }
+
+        /* Scenario Glow */
+        .scenario-primary {
+            box-shadow: 0 0 0 1px rgba(16, 185, 129, 0.2), 0 0 20px rgba(16, 185, 129, 0.1);
+        }
+    </style>
+</head>
+
+<body
+    class="bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col h-screen overflow-hidden font-sans">
+
+    <!-- 1. POSITIONING BANNER -->
+    <div
+        class="w-full bg-white/90 dark:bg-[#09090b]/90 border-b border-gray-200 dark:border-zinc-800 py-1 text-center backdrop-blur-sm fixed top-0 z-[60]">
+        <p class="text-[10px] font-mono text-gray-500 uppercase tracking-wide">
+            <span class="text-primary-500 font-bold">SYSTEM NOTICE:</span> Structured market state engine. Visualizing
+            probabilistic scenarios. Not advice.
+        </p>
+    </div>
+
+    <!-- 2. TOP NAV (Horizon Standard) -->
+    <header
+        class="h-16 border-b border-gray-200 dark:border-zinc-800 bg-white/80 dark:bg-[#09090b]/80 backdrop-blur fixed top-6 w-full z-50 flex items-center justify-between px-6 transition-colors duration-300">
+        <div class="flex items-center gap-8">
+            <a href="index.html" class="flex items-center gap-2">
+                <div
+                    class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary-500 to-purple-600 flex items-center justify-center text-white font-bold shadow-lg">
+                    N</div>
+                <div class="font-bold text-gray-900 dark:text-white text-xl tracking-tight hidden md:block">NEUROVEST
+                </div>
+            </a>
+            <nav class="hidden md:flex items-center gap-1 text-sm font-medium h-16">
+                <a href="index.html"
+                    class="h-full flex items-center px-4 text-primary-500 border-b-2 border-primary-500 font-bold">Dashboard</a>
+                <a href="watchlist.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">Watchlist</a>
+                <a href="history.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">History</a>
+                <a href="docs.html"
+                    class="h-full flex items-center px-4 text-gray-500 dark:text-gray-400 hover:text-primary-500 dark:hover:text-white transition">Docs</a>
+            </nav>
+        </div>
+        <div class="flex items-center gap-4">
+            <div
+                class="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary-500/10 border border-primary-500/20 rounded-full">
+                <span class="w-2 h-2 rounded-full bg-primary-500 animate-pulse"></span>
+                <span class="text-xs font-bold text-primary-600 dark:text-primary-400">4/5 Analyses Left</span>
+            </div>
+            <!-- Theme Toggle -->
+            <button onclick="document.documentElement.classList.toggle('dark')"
+                class="p-2 text-gray-500 hover:text-gray-900 dark:hover:text-white transition rounded-full hover:bg-gray-100 dark:hover:bg-zinc-800">
+                <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z">
+                    </path>
+                </svg>
+                <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                        d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z">
+                    </path>
+                </svg>
+            </button>
+            <a href="settings.html"
+                class="w-8 h-8 rounded-full bg-gray-200 dark:bg-zinc-800 border border-gray-300 dark:border-zinc-700 flex items-center justify-center text-xs font-bold text-gray-700 dark:text-white">TD</a>
+            <button onclick="toggleDrawer()"
+                class="text-gray-500 hover:text-gray-900 dark:hover:text-white p-2 rounded-md hover:bg-gray-100 dark:hover:bg-zinc-800 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16m-7 6h7">
+                    </path>
+                </svg>
+            </button>
+        </div>
+    </header>
+
+    <!-- 3. MAIN CONTENT -->
+    <main class="flex-1 pt-24 relative overflow-y-auto p-4 md:p-8">
+        <div class="max-w-6xl mx-auto space-y-8">
+
+            <!-- HEADER BLOCK -->
+            <header
+                class="flex flex-col md:flex-row justify-between items-end border-b border-gray-200 dark:border-zinc-800 pb-6 gap-6">
+                <div>
+                    <div class="flex items-center gap-3 mb-2">
+                        <span
+                            class="text-xs font-mono text-gray-500 bg-gray-100 dark:bg-zinc-900 px-2 py-1 rounded border border-gray-200 dark:border-zinc-800">NSE</span>
+                        <h1 class="text-4xl font-bold text-gray-900 dark:text-white tracking-tight">RELIANCE.NS</h1>
+                    </div>
+                    <!-- Regime Strip -->
+                    <div class="mt-3">
+                        <div class="flex justify-between text-[10px] text-gray-500 font-mono mb-1">
+                            <span>90D LOOKBACK</span>
+                            <span>CURRENT REGIME</span>
+                        </div>
+                        <div class="flex h-2 w-full md:w-80 rounded-sm overflow-hidden gap-[1px]">
+                            <div class="bg-success/30 w-12" title="Bullish"></div>
+                            <div class="bg-success/40 w-8" title="Bullish"></div>
+                            <div class="bg-gray-400/30 w-16" title="Neutral"></div>
+                            <div class="bg-danger/30 w-6" title="Bearish"></div>
+                            <div class="bg-gray-400/30 w-12" title="Neutral"></div>
+                            <div class="bg-primary-500/40 w-10" title="Compression"></div>
+                            <div class="bg-success/80 w-full" title="Current: Bullish Breakout"></div>
+                        </div>
+                        <span class="text-[10px] text-primary-500 font-bold font-mono mt-1 block">REGIME: BREAKOUT
+                            (ACCUMULATION)</span>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <div class="text-5xl font-mono font-medium text-gray-900 dark:text-white tracking-tighter">1556.50
+                    </div>
+                    <div class="text-xs text-gray-500 mt-1 font-mono">LATEST CLOSE</div>
+                </div>
+            </header>
+
+            <!-- SECTION 1: MARKET STATE (Grid) -->
+            <section class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <!-- Trend Bias (Dominant) -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-success/20 p-5 rounded-2xl relative overflow-hidden group">
+                    <div
+                        class="absolute top-0 right-0 w-20 h-20 bg-success/5 rounded-bl-full group-hover:bg-success/10 transition">
+                    </div>
+                    <div class="text-[10px] uppercase font-bold text-success mb-1">Primary Bias</div>
+                    <div class="text-2xl font-bold text-gray-900 dark:text-white tracking-tight">Bullish</div>
+                    <div class="text-[10px] text-success/70 mt-2 font-mono">STRUCTURE: HIGHER HIGHS</div>
+                </div>
+                <!-- Momentum -->
+                <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Momentum</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 dark:bg-zinc-800 text-gray-800 dark:text-gray-300">Neutral</span>
+                </div>
+                <!-- Volatility -->
+                <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl">
+                    <div class="text-[10px] uppercase font-bold text-gray-500 mb-2">Volatility</div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-primary-500/10 text-primary-600 dark:text-primary-400">Compression</span>
+                </div>
+                <!-- Confidence -->
+                <div
+                    class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 p-5 rounded-2xl flex flex-col justify-center">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-[10px] uppercase font-bold text-gray-500">Confidence</span>
+                        <span class="font-mono text-sm font-bold text-gray-900 dark:text-white">72%</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+                        <div class="bg-primary-500 h-full w-[72%]"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SECTION 2: ZONE VISUALIZER (The "No Chart" Chart) -->
+            <section>
+                <div class="flex justify-between items-end mb-3 px-1">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Structural Price Zones</h3>
+                    <span class="text-[10px] text-gray-400 font-mono">Relative Positioning</span>
+                </div>
+                <div class="relative h-20 bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-xl w-full overflow-hidden shadow-sm"
+                    id="zone-container">
+                    <!-- Javascript will render zones here -->
+                </div>
+                <div class="flex justify-between text-[10px] font-mono text-gray-400 px-1 mt-2">
+                    <span>1490</span>
+                    <span>1550</span>
+                    <span>1610</span>
+                </div>
+            </section>
+
+            <!-- SECTION 3: SCENARIOS (Card Grid) -->
+            <section>
+                <div class="flex items-center justify-between mb-4 px-1">
+                    <h3 class="text-xs font-bold text-gray-500 uppercase tracking-widest">Probabilistic Scenarios</h3>
+                    <span
+                        class="text-[10px] bg-gray-100 dark:bg-zinc-900 text-gray-500 px-2 py-1 rounded border border-gray-200 dark:border-zinc-800">Sum:
+                        100%</span>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Primary Scenario -->
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-success/30 rounded-2xl p-6 relative scenario-primary dark:shadow-none">
+                        <div
+                            class="absolute -top-3 left-6 bg-success text-white text-[10px] px-2 py-0.5 rounded font-bold uppercase tracking-wider shadow-lg">
+                            Primary</div>
+                        <div class="flex justify-between items-start mb-4 mt-2">
+                            <span class="font-mono text-2xl text-gray-900 dark:text-white font-bold">70%</span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-800 dark:text-gray-200 leading-snug mb-6">Bullish
+                            continuation toward resistance structure.</h4>
+
+                        <div
+                            class="bg-gray-50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800 p-3 rounded-lg mb-4">
+                            <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">Trigger</div>
+                            <div class="text-xs text-gray-700 dark:text-gray-300 font-mono">Hold > 1535 & Break 1570
+                            </div>
+                        </div>
+                        <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                            <div class="text-[10px] text-danger uppercase font-bold mb-1">Invalidation</div>
+                            <div class="font-mono text-xs text-danger/80">Close Below 1500</div>
+                        </div>
+                    </div>
+
+                    <!-- Secondary Scenario -->
+                    <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <span
+                                class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-1 rounded font-bold uppercase">Secondary</span>
+                            <span class="font-mono text-lg text-gray-500 font-bold">20%</span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 leading-snug mb-6">Range-bound
+                            consolidation within value area.</h4>
+                        <div
+                            class="bg-gray-50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800 p-3 rounded-lg mb-4">
+                            <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">Trigger</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400 font-mono">Range 1535–1570</div>
+                        </div>
+                        <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                            <div class="text-[10px] text-danger uppercase font-bold mb-1">Invalidation</div>
+                            <div class="font-mono text-xs text-gray-500">Breakout of Range</div>
+                        </div>
+                    </div>
+
+                    <!-- Tail Scenario -->
+                    <div
+                        class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6 opacity-75 hover:opacity-100 transition">
+                        <div class="flex justify-between items-start mb-4">
+                            <span
+                                class="text-[10px] bg-gray-100 dark:bg-zinc-800 text-gray-500 px-2 py-1 rounded font-bold uppercase">Tail
+                                Risk</span>
+                            <span class="font-mono text-lg text-gray-500 font-bold">10%</span>
+                        </div>
+                        <h4 class="text-sm font-medium text-gray-600 dark:text-gray-400 leading-snug mb-6">Bearish
+                            reversal breakdown.</h4>
+                        <div
+                            class="bg-gray-50 dark:bg-zinc-900/50 border border-gray-100 dark:border-zinc-800 p-3 rounded-lg mb-4">
+                            <div class="text-[10px] text-gray-400 uppercase font-bold mb-1">Trigger</div>
+                            <div class="text-xs text-gray-600 dark:text-gray-400 font-mono">Impulsive break < 1500</div>
+                            </div>
+                            <div class="pt-3 border-t border-gray-100 dark:border-zinc-800">
+                                <div class="text-[10px] text-success uppercase font-bold mb-1">Invalidation</div>
+                                <div class="font-mono text-xs text-gray-500">Recovery > 1535</div>
+                            </div>
+                        </div>
+                    </div>
+            </section>
+
+            <!-- SECTION 4: DERIVED NARRATIVE (Terminal Style) -->
+            <section class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                <!-- Narrative -->
+                <div
+                    class="lg:col-span-2 bg-gray-900 dark:bg-[#0f172a] rounded-2xl p-6 border-l-4 border-primary-500 shadow-xl">
+                    <div class="flex items-center gap-3 mb-4 border-b border-white/10 pb-3">
+                        <div class="w-2 h-2 bg-primary-500 rounded-full animate-pulse-slow"></div>
+                        <span class="text-xs font-bold text-primary-400 uppercase tracking-widest">System Narrative
+                            Output</span>
+                        <span class="text-[10px] bg-white/10 text-gray-400 px-2 py-0.5 rounded ml-auto">READ ONLY</span>
+                    </div>
+                    <p class="text-sm text-gray-300 leading-relaxed font-mono">
+                        "RELIANCE structure indicates bullish bias constrained by neutral momentum. Primary
+                        probabilistic path favors continuation > 1535. Structural thesis invalidated on < 1500 close."
+                            </p>
+                            <div class="mt-4 flex gap-4">
+                                <span class="text-[10px] text-gray-500 font-mono">GEN: 14:02 UTC</span>
+                                <span class="text-[10px] text-gray-500 font-mono">ID: A7-X99</span>
+                            </div>
+                </div>
+
+                <!-- Reliability Card -->
+                <div class="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-6">
+                    <div class="text-xs font-bold text-gray-500 uppercase tracking-widest mb-4">Model Reliability</div>
+                    <div class="space-y-4">
+                        <div
+                            class="flex justify-between items-center border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <span class="text-xs text-gray-500">Directional Accuracy</span>
+                            <span class="text-sm font-mono font-bold text-gray-900 dark:text-white">68.0%</span>
+                        </div>
+                        <div
+                            class="flex justify-between items-center border-b border-gray-100 dark:border-zinc-800 pb-2">
+                            <span class="text-xs text-gray-500">Baseline (Random)</span>
+                            <span class="text-sm font-mono text-gray-500">50.0%</span>
+                        </div>
+                        <div class="pt-2">
+                            <span class="text-xs font-bold text-success uppercase">Excess Edge</span>
+                            <div class="flex items-end gap-2">
+                                <span class="text-2xl font-mono font-bold text-success">+18.0%</span>
+                                <span class="text-[10px] text-gray-400 mb-1">vs Random</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- RIGHT DRAWER (Context) -->
+    <aside id="drawer"
+        class="fixed top-16 right-0 bottom-0 w-80 bg-white dark:bg-[#18181b] border-l border-gray-200 dark:border-zinc-800 transition-transform duration-500 drawer peek z-40 flex flex-col shadow-2xl">
+        <!-- Handle -->
+        <div class="absolute -left-3 top-1/2 w-3 h-12 bg-primary-500 rounded-l-md cursor-pointer flex items-center justify-center text-white shadow-md hover:bg-primary-600 transition"
+            onclick="toggleDrawer()">
+            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+            </svg>
+        </div>
+
+        <div
+            class="p-4 border-b border-gray-200 dark:border-zinc-800 flex justify-between items-center bg-gray-50 dark:bg-zinc-900/50">
+            <span class="text-xs font-bold text-gray-500 uppercase tracking-widest">Context</span>
+            <button onclick="toggleDrawer()"
+                class="text-gray-400 hover:text-gray-900 dark:hover:text-white transition"><svg class="w-4 h-4"
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12">
+                    </path>
+                </svg></button>
+        </div>
+
+        <div class="flex-1 overflow-y-auto p-4 space-y-6">
+            <div class="p-4 bg-gray-50 dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-xl">
+                <div class="flex justify-between text-xs mb-2">
+                    <span class="text-gray-500">Analysis Limit</span>
+                    <span class="text-gray-900 dark:text-white font-bold">4 / 5</span>
+                </div>
+                <div class="w-full bg-gray-200 dark:bg-zinc-800 h-1.5 rounded-full overflow-hidden">
+                    <div class="bg-primary-500 h-full w-[80%]"></div>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold text-gray-500 mb-3">Saved Scans</div>
+                <div class="space-y-2">
+                    <div
+                        class="p-3 bg-white dark:bg-zinc-950 border border-gray-200 dark:border-zinc-800 rounded-lg hover:border-primary-500/50 cursor-pointer transition">
+                        <div class="flex justify-between text-gray-900 dark:text-white font-bold text-sm">
+                            <span>RELIANCE</span><span class="text-success">Bullish</span>
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1 font-mono">1556.50 • 2m ago</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- LOGIC -->
+    <script>
+        // Drawer Logic
+        function toggleDrawer() {
+            const d = document.getElementById('drawer');
+            d.classList.remove('peek');
+            if (d.classList.contains('open')) {
+                d.classList.remove('open');
+                d.classList.add('closed');
+            } else {
+                d.classList.remove('closed');
+                d.classList.add('open');
+            }
+        }
+        // Remove peek automatically
+        setTimeout(() => {
+            const d = document.getElementById('drawer');
+            if (d.classList.contains('peek')) {
+                d.classList.remove('peek');
+                d.classList.add('closed');
+            }
+        }, 2000);
+
+        // Zone Rendering Logic (No Chart, Just Zones)
+        document.addEventListener('DOMContentLoaded', () => {
+            const data = { price: 1556.5, support: [1500, 1535], value: [1535, 1570], resistance: [1570, 1600] };
+            const container = document.getElementById('zone-container');
+            const min = 1480, max = 1620, range = max - min;
+            const getPct = (v) => ((v - min) / range) * 100;
+            const width = (s, e) => ((e - s) / range) * 100;
+
+            const addZone = (s, e, cls, txt) => {
+                const d = document.createElement('div');
+                d.className = `absolute top-0 bottom-0 flex items-center justify-center text-[10px] font-mono font-bold ${cls}`;
+                d.style.left = `${getPct(s)}%`; d.style.width = `${width(s, e)}%`;
+                d.innerText = txt;
+                container.appendChild(d);
+            };
+
+            addZone(data.support[0], data.support[1], 'bg-gray-100 dark:bg-zinc-800 text-gray-400 border-r border-gray-300 dark:border-zinc-700', 'SUP');
+            addZone(data.value[0], data.value[1], 'bg-primary-500/10 text-primary-500 border-x border-primary-500/20', 'VAL');
+            addZone(data.resistance[0], data.resistance[1], 'bg-warning/10 text-warning border-l border-warning/20', 'RES');
+
+            // Price Marker
+            const m = document.createElement('div');
+            m.className = 'absolute top-0 bottom-0 w-0.5 bg-gray-900 dark:bg-white z-20 shadow-[0_0_10px_rgba(0,0,0,0.2)] dark:shadow-[0_0_10px_white]';
+            m.style.left = `${getPct(data.price)}%`;
+            container.appendChild(m);
+        });
+    </script>
+</body>
+
+</html>
