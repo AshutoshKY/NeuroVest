@@ -312,28 +312,43 @@ class RSSNewsAggregator:
         Returns:
             Filtered list
         """
-        ticker_lower = ticker.lower()
-        company_lower = company_name.lower()
+        # CRITICAL FIX: Strip exchange suffixes (.NS, .BO, .BSE) from ticker
+        # Articles say "Reliance" not "Reliance.NS"
+        clean_ticker = ticker.replace('.NS', '').replace('.BO', '').replace('.BSE', '')
+        
+        ticker_lower = clean_ticker.lower()
+        company_lower = company_name.lower() if company_name else ""
+        
+        logger.info(f"[RSS_FILTER_START] Filtering {len(entries)} entries for ticker='{clean_ticker}', company='{company_name}'")
+        
+        # Log first 3 article titles for debugging
+        if entries:
+            sample_titles = [entries[i]['title'][:80] for i in range(min(3, len(entries)))]
+            logger.info(f"[RSS_SAMPLE_TITLES] Sample articles: {sample_titles}")
         
         # Also check for company name variations
         # e.g., "Reliance Industries" → ["reliance", "reliance industries"]
-        company_parts = [company_lower] + [part for part in company_lower.split() if len(part) > 3]
+        company_parts = [company_lower] + [part for part in company_lower.split() if len(part) > 3] if company_name else []
+        
+        logger.debug(f"[RSS_FILTER] Search terms: ticker='{ticker_lower}', company_parts={company_parts}")
         
         relevant = []
-        for entry in entries:
+        for idx, entry in enumerate(entries):
             title_lower = entry['title'].lower()
             content_lower = entry['content'].lower()
             
             # Check if ticker or company name appears
-            matches = (
-                ticker_lower in title_lower or
-                ticker_lower in content_lower or
-                any(part in title_lower or part in content_lower for part in company_parts)
-            )
+            ticker_in_title = ticker_lower in title_lower
+            ticker_in_content = ticker_lower in content_lower
+            company_match = any(part in title_lower or part in content_lower for part in company_parts) if company_parts else False
+            
+            matches = ticker_in_title or ticker_in_content or company_match
             
             if matches:
+                logger.debug(f"[RSS_MATCH] Article {idx}: '{entry['title'][:50]}...' - ticker_title:{ticker_in_title}, ticker_content:{ticker_in_content}, company:{company_match}")
                 relevant.append(entry)
         
+        logger.info(f"[RSS_FILTER_END] Found {len(relevant)}/{len(entries)} relevant articles")
         return relevant
     
     def _deduplicate(self, articles: List[Dict]) -> List[Dict]:

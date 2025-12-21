@@ -34,7 +34,7 @@ class Settings(BaseSettings):
     
     # Data Storage
     DATA_DIR: str = "/app/data"
-    CHROMA_DB_PATH: str = os.getenv("CHROMA_DB_PATH", "./chroma_db")
+    CHROMA_DB_PATH: str = os.getenv("CHROMA_DB_PATH", "/app/data/chroma_db")
     
     # ChromaDB Dynamic Temporal Retrieval Configuration
     TEMPORAL_DECAY_LAMBDA: float = 0.05  # Decay rate for temporal scoring

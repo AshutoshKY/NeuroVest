@@ -1,0 +1,437 @@
+'use client';
+
+// Force client-side rendering only (no SSR/ISR/SSG)
+export const dynamic = 'force-dynamic';
+export const fetchCache = 'force-no-store';
+
+
+import { useEffect, useState, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuthStore } from '@/store/authStore';
+import { useUI } from '@/contexts/UIContext';
+import apiClient from '@/lib/api';
+
+// v2 Components
+import { Header } from '@/components/v2/layout/Header';
+import { SearchBar } from '@/components/v2/dashboard/SearchBar';
+import { TrendingCard } from '@/components/v2/dashboard/TrendingCard';
+import { RightDrawer } from '@/components/v2/layout/RightDrawer';
+import { AnalysisView } from '@/components/v2/pages/AnalysisView';
+import { mapAnalysisToV2, type AnalysisV2Data } from '@/lib/api/mappers';
+
+
+// Types
+interface SearchResult {
+    ticker: string;
+    name: string;
+    exchange: string;
+}
+
+interface TrendingStock {
+    ticker: string;
+    analysis_count: number;
+    rank: number;
+}
+
+function DashboardV2Content() {
+    const router = useRouter();
+    const { isAuthenticated, checkGuestLimit } = useAuthStore();
+    const { version } = useUI();
+
+    // Search state
+    const [country, setCountry] = useState('India');
+    const [searchQuery, setSearchQuery] = useState('');
+    const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
+    const [selectedStock, setSelectedStock] = useState<SearchResult | null>(null);
+    const [isSearching, setIsSearching] = useState(false);
+    const [showDropdown, setShowDropdown] = useState(false);
+
+    // Data state
+    const [savedAnalyses, setSavedAnalyses] = useState<any[]>([]);
+    const [trendingStocks, setTrendingStocks] = useState<TrendingStock[]>([]);
+    const [watchlistTickers, setWatchlistTickers] = useState<string[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+
+    // Analysis state
+    const [showAnalysisView, setShowAnalysisView] = useState(false);
+    const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [analysisSteps, setAnalysisSteps] = useState<any[]>([]);
+    const [analysisData, setAnalysisData] = useState<AnalysisV2Data | null>(null);
+    const [isDrawerOpen, setIsDrawerOpen] = useState(false);
+
+    const isSelectingStock = useRef(false);
+    const hasInitialized = useRef(false);
+
+    // Initialize data
+    useEffect(() => {
+        if (!isAuthenticated) {
+            router.push('/auth/login');
+            return;
+        }
+
+        if (hasInitialized.current) return;
+        hasInitialized.current = true;
+
+        const fetchInitialData = async () => {
+            try {
+                const [trendingRes, savedRes, watchlistRes] = await Promise.all([
+                    apiClient.get('/stocks/trending').catch(() => ({ data: { trending_stocks: [] } })),
+                    apiClient.get('/api/saved-analyses').catch(() => ({ data: [] })),
+                    apiClient.get('/api/watchlist').catch(() => ({ data: [] }))
+                ]);
+
+                setTrendingStocks(trendingRes.data.trending_stocks || []);
+                setSavedAnalyses(Array.isArray(savedRes.data) ? savedRes.data : []);
+
+                const watchlistData = Array.isArray(watchlistRes.data) ? watchlistRes.data : [];
+                setWatchlistTickers(watchlistData.map((item: any) => item.ticker));
+            } catch (error) {
+                console.error('Failed to fetch data:', error);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+
+        fetchInitialData();
+    }, [isAuthenticated, router]);
+
+    // Debounced search
+    useEffect(() => {
+        if (isSelectingStock.current) {
+            isSelectingStock.current = false;
+            return;
+        }
+
+        if (!searchQuery.trim()) {
+            setSearchResults([]);
+            setShowDropdown(false);
+            return;
+        }
+
+        const debounceTimer = setTimeout(async () => {
+            setIsSearching(true);
+            try {
+                const response = await apiClient.get(`/stocks/search?q=${encodeURIComponent(searchQuery)}&country=${country}`);
+                setSearchResults(response.data.results || []);
+                setShowDropdown(true);
+            } catch (error) {
+                console.error('Search failed:', error);
+                setSearchResults([]);
+            } finally {
+                setIsSearching(false);
+            }
+        }, 500);
+
+        return () => clearTimeout(debounceTimer);
+    }, [searchQuery, country]);
+
+    const handleSelectStock = (stock: SearchResult) => {
+        isSelectingStock.current = true;
+        setSelectedStock(stock);
+        setSearchQuery(stock.name || stock.ticker);
+        setShowDropdown(false);
+        setSearchResults([]);
+    };
+
+    const handleAnalyze = async (stockOverride?: SearchResult) => {
+        const stockToUse = stockOverride || selectedStock;
+
+        if (!stockToUse) {
+            alert('Please select a stock from the dropdown');
+            return;
+        }
+
+        // Show analysis view and start analyzing
+        setShowAnalysisView(true);
+        setIsAnalyzing(true);
+        setAnalysisSteps([]);
+        setAnalysisData(null);
+
+        try {
+            const { TrackingHeaders } = await import('@/lib/tracking-headers');
+            const trackingHeaders = await TrackingHeaders.getHeaders();
+
+            const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+            const response = await fetch(
+                `${apiUrl}/stocks/${stockToUse.ticker}/analysis-stream`,
+                {
+                    credentials: 'include',
+                    headers: {
+                        ...trackingHeaders as any,
+                        'Accept': 'text/event-stream',
+                    },
+                }
+            );
+
+            if (response.status === 429) {
+                alert('Rate limit exceeded. Please try again later.');
+                setIsAnalyzing(false);
+                setShowAnalysisView(false);
+                return;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const reader = response.body?.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
+            let finalData: any = null;
+
+            while (true) {
+                const { done, value } = await reader!.read();
+                if (done) break;
+
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+
+                for (const line of lines) {
+                    if (!line.trim() || !line.startsWith('data: ')) continue;
+
+                    try {
+                        const jsonStr = line.slice(6);
+                        const data = JSON.parse(jsonStr);
+
+                        if (data.type === 'step') {
+                            const stepText = data.step.text || data.step.description || '';
+                            setAnalysisSteps(prev => [...prev, {
+                                ...data.step,
+                                text: stepText
+                            }]);
+                        } else if (data.type === 'final') {
+                            finalData = data.analysis;
+                        } else if (data.type === 'error') {
+                            console.error('Analysis error:', data);
+                        }
+                    } catch (parseError) {
+                        console.warn('Skipped malformed SSE line');
+                    }
+                }
+            }
+
+            if (finalData) {
+                // Map to v2 structure
+                const v2Data = mapAnalysisToV2(finalData);
+                console.log('[ANALYSIS] Final data received:', v2Data);
+                setAnalysisData(v2Data);
+            } else {
+                console.warn('[ANALYSIS] No final data received from SSE stream');
+            }
+
+            // Refresh trending stocks
+            const trendingRes = await apiClient.get('/stocks/trending').catch(() => ({ data: { trending_stocks: [] } }));
+            setTrendingStocks(trendingRes.data.trending_stocks || []);
+
+            // Refresh limit
+            await checkGuestLimit();
+        } catch (error: any) {
+            console.error('[ANALYSIS] Analysis failed:', error);
+            alert('Analysis failed. Please try again.');
+            setShowAnalysisView(false); // Close on error
+        } finally {
+            setIsAnalyzing(false);
+            console.log('[ANALYSIS] Analysis complete. showAnalysisView:', true, 'hasData:', !!analysisData);
+            // DON'T close view - keep it open to show results
+        }
+    };
+
+    const handleCloseAnalysis = () => {
+        setShowAnalysisView(false);
+        setAnalysisData(null);
+        setAnalysisSteps([]);
+        setSelectedStock(null);
+        setSearchQuery('');
+    };
+
+    const handleSaveAnalysis = async () => {
+        if (!analysisData) return;
+        try {
+            await apiClient.post('/api/saved-analyses', {
+                ticker: analysisData.ticker,
+                title: null,
+                analysis_data: analysisData
+            });
+            alert('Analysis saved successfully!');
+        } catch (error) {
+            console.error('Failed to save:', error);
+            alert('Failed to save analysis');
+        }
+    };
+
+    const handleWatchlist = async () => {
+        if (!selectedStock) return;
+        try {
+            await apiClient.post('/api/watchlist', {
+                ticker: selectedStock.ticker,
+                name: selectedStock.name || selectedStock.ticker,
+                exchange: selectedStock.exchange || 'NSE'
+            });
+            alert(`${selectedStock.ticker} added to watchlist!`);
+        } catch (error) {
+            console.error('Failed to add to watchlist:', error);
+        }
+    };
+
+    const toggleWatchlist = async (ticker: string, name: string, exchange: string, event?: React.MouseEvent) => {
+        if (event) event.stopPropagation();
+
+        try {
+            if (watchlistTickers.includes(ticker)) {
+                await apiClient.delete(`/api/watchlist/${ticker}`);
+                setWatchlistTickers(prev => prev.filter(t => t !== ticker));
+            } else {
+                await apiClient.post('/api/watchlist', { ticker, name, exchange });
+                setWatchlistTickers(prev => [...prev, ticker]);
+            }
+        } catch (error) {
+            console.error('Watchlist toggle failed:', error);
+        }
+    };
+
+    // Render v1 if version is v1 (return early)
+    if (version === 'v1') {
+        return <div className="p-8 text-center text-white">
+            <p>v1 Dashboard (existing implementation)</p>
+            <p className="text-sm text-gray-500 mt-2">Toggle to v2 in settings</p>
+        </div>;
+    }
+
+    // v2 Dashboard - POC Design Match
+    return (
+        <div className="min-h-screen bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col overflow-hidden font-sans">
+            {/* Header Navigation */}
+            <Header
+                analysesRemaining={4}
+                analysesLimit={5}
+                userInitials="TD"
+                onDrawerToggle={() => setIsDrawerOpen(!isDrawerOpen)}
+            />
+            {/* Right Drawer */}
+            <RightDrawer
+                isOpen={isDrawerOpen}
+                onClose={() => setIsDrawerOpen(false)}
+                analysisCount={{ remaining: 4, limit: 5 }} // TODO: Get from API
+                savedAnalyses={savedAnalyses}
+                onLoadAnalysis={(id) => console.log('Load analysis', id)}
+            />
+
+            {/* Main Content - POC Design Match */}
+            <main className="flex-1 pt-16 relative overflow-y-auto">
+                <AnimatePresence mode="wait">
+                    {!showAnalysisView ? (
+                        /* Dashboard View - Centered Layout */
+                        <motion.div
+                            key="dashboard"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex flex-col items-center justify-center min-h-[80vh] p-6"
+                        >
+                            {/* Hero Heading */}
+                            <div className="text-center mb-10 animate-fade-in">
+                                <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-4 tracking-tight">
+                                    Market Intelligence, <span style={{
+                                        background: 'linear-gradient(to right, #6366f1, #a855f7)',
+                                        WebkitBackgroundClip: 'text',
+                                        WebkitTextFillColor: 'transparent',
+                                        backgroundClip: 'text'
+                                    }}>Simplified.</span>
+                                </h1>
+                                <p className="text-lg text-gray-600 dark:text-zinc-500 max-w-2xl mx-auto">
+                                    Instant AI-powered technical analysis for Indian equity markets.
+                                </p>
+                            </div>
+
+                            {/* Search Bar */}
+                            <div className="mb-12">
+                                <SearchBar
+                                    value={searchQuery}
+                                    onChange={setSearchQuery}
+                                    onSelect={handleSelectStock}
+                                    onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && selectedStock) {
+                                            handleAnalyze(selectedStock);
+                                        }
+                                    }}
+                                    results={searchResults}
+                                    isSearching={isSearching}
+                                    showDropdown={showDropdown}
+                                    disabled={isAnalyzing}
+                                />
+                            </div>
+
+                            {/* Trending Stocks */}
+                            <div className="w-full max-w-4xl">
+                                <h3 className="text-xs font-bold text-gray-500 uppercase tracking-wider mb-4 px-1">⚡ Trending in NeuroVest</h3>
+                                {isLoading ? (
+                                    <div className="text-center py-8 text-gray-500 text-sm">Loading...</div>
+                                ) : trendingStocks.length === 0 ? (
+                                    <div className="text-center py-8 text-gray-500 text-sm">No trending stocks yet</div>
+                                ) : (
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        {trendingStocks.slice(0, 3).map((stock) => (
+                                            <TrendingCard
+                                                key={stock.ticker}
+                                                stock={stock}
+                                                onClick={() => {
+                                                    const stockData = {
+                                                        ticker: stock.ticker,
+                                                        name: stock.ticker,
+                                                        exchange: 'NSE'
+                                                    };
+                                                    handleSelectStock(stockData);
+                                                    handleAnalyze(stockData);
+                                                }}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </motion.div>
+                    ) : (
+                        /* Analysis View */
+                        <motion.div
+                            key="analysis"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                        >
+                            {selectedStock && analysisData && (
+                                <AnalysisView
+                                    analysisData={analysisData}
+                                    selectedStock={selectedStock}
+                                    onClose={handleCloseAnalysis}
+                                    onSave={handleSaveAnalysis}
+                                    onWatchlist={handleWatchlist}
+                                    isAnalyzing={isAnalyzing}
+                                    analysisSteps={analysisSteps}
+                                />
+                            )}
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+            </main>
+        </div>
+    );
+}
+
+// Wrap in ClientOnly to prevent SSR issues
+import { ClientOnly } from '@/components/ClientOnly';
+
+export default function DashboardV2Page() {
+    return (
+        <ClientOnly fallback={
+            <div className="min-h-screen flex items-center justify-center bg-slate-950">
+                <div className="text-center">
+                    <div className="w-16 h-16 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+                    <p className="text-white text-lg">Loading Dashboard...</p>
+                </div>
+            </div>
+        }>
+            <DashboardV2Content />
+        </ClientOnly>
+    );
+}
