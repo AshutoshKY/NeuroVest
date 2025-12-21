@@ -51,6 +51,13 @@ class APIRateLimitMiddleware(BaseHTTPMiddleware):
         "/redoc",                           # ReDoc
         "/openapi.json",                    # OpenAPI schema
         "/health",                          # Health check
+        "/",                                # Root path
+        "/favicon.ico",                     # Favicon
+        "/ws",                              # WebSocket endpoint
+        
+        # Test endpoints (for development/testing without auth)
+        "/test/analysis",                   # Test endpoint without auth
+        "/test/signal",                     # Test endpoint without auth
     }
 
     
@@ -62,7 +69,12 @@ class APIRateLimitMiddleware(BaseHTTPMiddleware):
         request.state.trace_id = trace_id
         
         # Determine if this path is exempt from strict validation
-        is_exempt = request.url.path in self.VALIDATION_EXEMPT_PATHS
+        # Check exact matches AND path prefixes for test endpoints
+        path = request.url.path
+        is_exempt = (
+            path in self.VALIDATION_EXEMPT_PATHS or 
+            path.startswith("/test/")  # Allow all test endpoints
+        )
         
         # Get user context (if authenticated)
         user_id = None
