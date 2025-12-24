@@ -36,7 +36,7 @@ interface TrendingStock {
 
 function DashboardV2Content() {
     const router = useRouter();
-    const { isAuthenticated, checkGuestLimit, user, guestRequestsRemaining, guestLimit } = useAuthStore();
+    const { isAuthenticated, checkGuestLimit } = useAuthStore();
     const { version } = useUI();
 
     // Search state
@@ -75,9 +75,6 @@ function DashboardV2Content() {
 
         const fetchInitialData = async () => {
             try {
-                // CRITICAL: Check guest limit first to get accurate count
-                await checkGuestLimit();
-
                 const [trendingRes, savedRes, watchlistRes] = await Promise.all([
                     apiClient.get('/stocks/trending').catch(() => ({ data: { trending_stocks: [] } })),
                     apiClient.get('/api/saved-analyses').catch(() => ({ data: [] })),
@@ -86,9 +83,11 @@ function DashboardV2Content() {
 
                 setTrendingStocks(trendingRes.data.trending_stocks || []);
                 setSavedAnalyses(Array.isArray(savedRes.data) ? savedRes.data : []);
-                setWatchlistTickers(Array.isArray(watchlistRes.data) ? watchlistRes.data.map((item: any) => item.ticker) : []);
+
+                const watchlistData = Array.isArray(watchlistRes.data) ? watchlistRes.data : [];
+                setWatchlistTickers(watchlistData.map((item: any) => item.ticker));
             } catch (error) {
-                console.error('Failed to load initial data:', error);
+                console.error('Failed to fetch data:', error);
             } finally {
                 setIsLoading(false);
             }
@@ -217,10 +216,7 @@ function DashboardV2Content() {
                 // Map to v2 structure
                 const v2Data = mapAnalysisToV2(finalData);
                 console.log('[ANALYSIS] Final data received:', v2Data);
-                console.log('[ANALYSIS] v2Data type:', typeof v2Data, 'isNull:', v2Data === null, 'isUndefined:', v2Data === undefined);
-                console.log('[ANALYSIS] v2Data keys:', v2Data ? Object.keys(v2Data) : 'NO KEYS');
                 setAnalysisData(v2Data);
-                console.log('[ANALYSIS] setAnalysisData called with:', v2Data === null ? 'NULL' : v2Data === undefined ? 'UNDEFINED' : 'OBJECT');
             } else {
                 console.warn('[ANALYSIS] No final data received from SSE stream');
             }
@@ -308,16 +304,16 @@ function DashboardV2Content() {
         <div className="min-h-screen bg-gray-50 dark:bg-[#09090b] text-gray-900 dark:text-gray-300 flex flex-col overflow-hidden font-sans">
             {/* Header Navigation */}
             <Header
-                analysesRemaining={guestRequestsRemaining}
-                analysesLimit={guestLimit}
-                userInitials={user?.email ? user.email.substring(0, 2).toUpperCase() : 'GU'}
+                analysesRemaining={guestLimit?.remaining || 0}
+                analysesLimit={guestLimit?.limit || 5}
+                userInitials={user?.email ? user.email.substring(0, 2).toUpperCase() : 'TD'}
                 onDrawerToggle={() => setIsDrawerOpen(!isDrawerOpen)}
             />
             {/* Right Drawer */}
             <RightDrawer
                 isOpen={isDrawerOpen}
                 onClose={() => setIsDrawerOpen(false)}
-                analysisCount={{ remaining: guestRequestsRemaining, limit: guestLimit }}
+                analysisCount={{ remaining: guestLimit?.remaining || 0, limit: guestLimit?.limit || 5 }}
                 savedAnalyses={savedAnalyses}
                 onLoadAnalysis={(id) => console.log('Load analysis', id)}
             />
@@ -396,73 +392,22 @@ function DashboardV2Content() {
                             </div>
                         </motion.div>
                     ) : (
-                        /* Analysis View with inline loading */
+                        /* Analysis View - ALWAYS RENDER when showAnalysisView is true */
                         <motion.div
                             key="analysis"
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className="flex-1 pt-24"
                         >
-                            {isAnalyzing ? (
-                                /* Inline Loading - Replace hero content, keep header */
-                                <div className="max-w-4xl mx-auto px-6 py-12">
-                                    <div className="bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-2xl p-8 shadow-xl">
-                                        <div className="flex items-center gap-4 mb-6">
-                                            <div className="animate-spin rounded-full h-12 w-12 border-4 border-primary-500 border-t-transparent"></div>
-                                            <div>
-                                                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
-                                                    Analyzing {selectedStock?.ticker}
-                                                </h2>
-                                                <p className="text-sm text-gray-500 dark:text-gray-400">
-                                                    Processing market data...
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {/* Analysis Steps */}
-                                        {analysisSteps.length > 0 && (
-                                            <div className="space-y-2 mt-6">
-                                                {analysisSteps.map((step, i) => (
-                                                    <div
-                                                        key={i}
-                                                        className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-zinc-900 rounded-lg"
-                                                    >
-                                                        <div className="w-6 h-6 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs font-bold">
-                                                            {i + 1}
-                                                        </div>
-                                                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                                                            {step.text || step.description || 'Processing...'}
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                            ) : selectedStock && analysisData ? (
-                                <AnalysisView
-                                    analysisData={analysisData}
-                                    selectedStock={selectedStock}
-                                    onClose={handleCloseAnalysis}
-                                    onSave={handleSaveAnalysis}
-                                    onWatchlist={handleWatchlist}
-                                    isAnalyzing={false}
-                                    analysisSteps={analysisSteps}
-                                />
-                            ) : (
-                                <div className="flex items-center justify-center min-h-[60vh]">
-                                    <div className="text-center">
-                                        <p className="text-lg text-gray-600 dark:text-gray-400 mb-4">No analysis data available</p>
-                                        <button
-                                            onClick={handleCloseAnalysis}
-                                            className="px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
-                                        >
-                                            Back to Dashboard
-                                        </button>
-                                    </div>
-                                </div>
-                            )}
+                            <AnalysisView
+                                analysisData={analysisData || {} as any}
+                                selectedStock={selectedStock || { ticker: '', name: '', exchange: '' }}
+                                onClose={handleCloseAnalysis}
+                                onSave={handleSaveAnalysis}
+                                onWatchlist={handleWatchlist}
+                                isAnalyzing={isAnalyzing}
+                                analysisSteps={analysisSteps}
+                            />
                         </motion.div>
                     )}
                 </AnimatePresence>
