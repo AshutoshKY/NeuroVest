@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional, Union
 from pydantic import BaseModel
 
 from app.core.database import get_db
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api", tags=["user_stocks"])
 class StockBase(BaseModel):
     ticker: str
     name: str
-    exchange: str | None = None
+    exchange: Optional[str] = None
 
 
 class StockResponse(StockBase):
@@ -30,7 +30,7 @@ class AnalysisHistoryResponse(BaseModel):
     id: int
     ticker: str
     name: str
-    analysis_data: dict | None
+    analysis_data: Optional[dict]
     created_at: str
     
     class Config:
@@ -237,19 +237,19 @@ async def delete_history_item(
 # Saved Analysis endpoints
 class SaveAnalysisRequest(BaseModel):
     ticker: str
-    title: str | None = None
+    title: Optional[str] = None
     analysis_data: dict
 
 
 class SavedAnalysisResponse(BaseModel):
     id: str
     ticker: str
-    name: str | None = None  # Stock company name
-    title: str | None
+    name: Optional[str] = None  # Stock company name
+    title: Optional[str]
     sentiment: str
     price: float
     currency: str
-    confidence: float | None = None  # Confidence score (0-1 decimal)
+    confidence: Optional[float] = None  # Confidence score (0-1 decimal)
     saved_at: str
 
 

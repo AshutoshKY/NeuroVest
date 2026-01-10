@@ -6,7 +6,7 @@ import time  # For performance timing metrics
 import json  # For structured request formatting in V3 prompt
 from datetime import datetime
 from app.core.config import settings
-from app.services.embeddings import embedding_service
+from app.services.embeddings import get_embedding_service
 from app.services.sentiment import sentiment_service
 from app.services.guardrails import guardrails_service, DISCLAIMER
 from app.services.technical_analysis import TechnicalAnalysisService
@@ -131,7 +131,7 @@ class RAGService:
                     })
             
             # Now retrieve from ChromaDB (includes both fresh and stored news)
-            search_results = embedding_service.query_similar(
+            search_results = get_embedding_service().query_similar(
                 query_text=query,
                 n_results=n_results,
                 filter_metadata=filter_metadata
@@ -162,7 +162,7 @@ class RAGService:
                     
                     logger.debug(f"[CHROMADB_TEMPORAL] Using dynamic retrieval for {ticker}")
                     historical_analyses_raw = retrieve_historical_analyses_dynamic(
-                        embedding_service, ticker, days_back=settings.DAYS_BACK, max_analyses=settings.TARGET_ANALYSES,
+                        get_embedding_service(), ticker, days_back=settings.DAYS_BACK, max_analyses=settings.TARGET_ANALYSES,
                         temporal_decay_lambda=settings.TEMPORAL_DECAY_LAMBDA,
                         temporal_weight=settings.TEMPORAL_WEIGHT,
                         quality_weight=settings.QUALITY_WEIGHT,
@@ -1090,7 +1090,7 @@ class RAGService:
         """
         try:
             from datetime import datetime
-            from app.services.embeddings import embedding_service
+            from app.services.embeddings import get_embedding_service
             
             # Extract key components
             sentiment = result.get('sentiment', {})
@@ -1187,7 +1187,7 @@ Future Outlook & Prediction:
             }
             
             # Add to embeddings
-            embedding_service.add_documents(
+            get_embedding_service().add_documents(
                 documents=[analysis_document],
                 metadatas=[metadata],
                 ids=[f"analysis_{ticker}_{int(datetime.now().timestamp())}"],
@@ -2280,7 +2280,7 @@ Resistance: ₹{price_zones.get('resistance', [0])[0] if isinstance(price_zones.
         Returns embedded historical analysis documents.
         """
         try:
-            from app.services.embeddings import embedding_service
+            from app.services.embeddings import get_embedding_service
             
             # Query ChromaDB for historical_analysis documents for this ticker
             # USE collection.get() for exact metadata matching
@@ -2301,7 +2301,7 @@ Resistance: ₹{price_zones.get('resistance', [0])[0] if isinstance(price_zones.
             })
             
             # Retrieve historical analyses from analysis collection
-            results = embedding_service.get_documents(
+            results = get_embedding_service().get_documents(
                 where={"$and": [{"type": "historical_analysis"}, {"ticker": ticker}]},
                 limit=top_k,
                 collection_type="analysis"

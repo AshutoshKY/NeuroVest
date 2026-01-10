@@ -38,7 +38,10 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         """Process each request through security checks"""
         
         path = request.url.path
-        client_ip = request.client.host
+        if request.client:
+            client_ip = request.client.host
+        else:
+            client_ip = "unknown"
         
         # Skip whitelist paths
         if any(path.startswith(wp) for wp in self.WHITELIST_PATHS):
