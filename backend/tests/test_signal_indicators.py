@@ -75,7 +75,13 @@ def test_bollinger_bands(sample_price_data):
     series = sample_price_data["Close"]
     upper, mid, lower = bollinger_bands(series)
     
+    # Drop NaNs created by rolling window before comparison
+    upper = upper.dropna()
+    mid = mid.dropna()
+    lower = lower.dropna()
+    
     # Upper > Mid > Lower
+    # Use close assertion to handle float precision if needed, but >= should work
     assert (upper >= mid).all()
     assert (mid >= lower).all()
 
@@ -89,20 +95,23 @@ def test_market_structure_detection():
     })
     
     structure = detect_market_structure(df, lookback=5)
-    # Note: Logic depends on swing points. Simple linear uptrend might trigger "higher_high"
-    # or "consolidation" if volatility is low.
-    # Given the implementation, we expect valid enum return
     assert structure in ["higher_high", "lower_low", "range", "consolidation"]
 
 def test_volume_analysis(sample_price_data):
     """Test Volume Spike detection"""
     df = sample_price_data.copy()
     
-    # Add huge spike at end
-    df.iloc[-1, df.columns.get_loc("Volume")] = 10000000 
-    # Previous average is small (~25000)
+    # Add huge spike at end using .iloc explicitly
+    # Volume column index
+    vol_idx = df.columns.get_loc("Volume")
+    df.iloc[-1, vol_idx] = 10_000_000.0 # Float to match
+    
+    # Ensure previous volumes are low
+    # sample_price_data volumes are 0, 1000, 2000... 49000
+    # Avg of last 20 (excluding last) approx 39000?
+    # 10M / 39k > 2.0. Should pass.
     
     ratio, confirmation, spike = analyze_volume(df)
     
-    assert spike is True
+    assert spike is True, f"Spike not detected. Ratio: {ratio}"
     assert ratio > 2.0
