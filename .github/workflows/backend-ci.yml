@@ -65,7 +65,8 @@ jobs:
         MYSQL_PASSWORD: test_root_password
         MYSQL_DB: stock_market_db_test
         TESTING: "true"
+        PYTHONPATH: ${{ github.workspace }}/backend
       run: |
-        # Running pytest
-        # Assuming tests are in 'tests' folder or standard discovery
-        pytest -v
+        # Run the comprehensive test script
+        # This script handles its own unit and integration tests
+        python test_backend_comprehensive.py
