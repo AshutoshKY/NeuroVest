@@ -455,7 +455,7 @@ async def update_settings(
             params["notifications"] = request.email_notifications
         
         if updates:
-            query = f"UPDATE users SET {', '.join(updates)} WHERE id = :user_id"  # nosec
+            query = f"UPDATE users SET {', '.join(updates)} WHERE id = :user_id"  # nosec B608
             db.execute(text(query), params)
             db.commit()
             
