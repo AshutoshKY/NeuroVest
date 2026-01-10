@@ -1,24 +1,23 @@
 import pytest
-from fastapi.testclient import TestClient
-from app.main import app
 from app.core.config import settings
 
-client = TestClient(app)
+# Helper to generate unique email
+# ... (function def is fine, but client usage inside classes needs changing)
 
 # Helper to generate unique email
-from datetime import datetime
+import uuid
 def get_unique_email():
-    return f"test_{int(datetime.now().timestamp())}@example.com"
+    return f"test_{uuid.uuid4().hex[:8]}@example.com"
 
 class TestAuthFlow:
-    def test_public_key_access(self):
+    def test_public_key_access(self, client):
         """Test public key endpoint (Tracking/Encryption)"""
         response = client.get("/tracking/encryption/public-key")
         assert response.status_code == 200
         assert "public_key" in response.json()
         assert "BEGIN PUBLIC KEY" in response.json()["public_key"]
 
-    def test_signup_and_login_flow(self):
+    def test_signup_and_login_flow(self, client):
         """Full flow: Register -> Login -> Me -> Refresh -> Logout"""
         email = get_unique_email()
         password = "Str0ng@Password123!"
@@ -57,6 +56,7 @@ class TestAuthFlow:
 
         # 4. Refresh Token
         auth_cookies = {"refresh_token": refresh_token}
+        import time; time.sleep(1.1) # Ensure IAT changes
         refresh_res = client.post("/auth/refresh", cookies=auth_cookies)
         assert refresh_res.status_code == 200
         new_tokens = refresh_res.json()
@@ -69,24 +69,37 @@ class TestAuthFlow:
         assert logout_res.json()["ok"] is True
 
 class TestTrackingFlow:
-    def test_guest_limit_check(self):
+    def test_guest_limit_check(self, client):
         """Test guest rate limit endpoint"""
-        response = client.get("/tracking/user/check-limit")
+        # Mock valid tracking headers to pass strict middleware
+        headers = {
+            "X-Device-Token": '{"device_fp": "mock_fp_123"}',
+            "X-Session-ID": "mock_sess_123"
+        }
+        response = client.get("/tracking/user/check-limit", headers=headers)
         assert response.status_code == 200
         data = response.json()
         assert data["role"] == "guest"
         assert "remaining" in data
         assert "limit" in data
 
-    def test_user_limit_check(self):
+    def test_user_limit_check(self, client):
         """Test registered user rate limit"""
         # Create temporary user
         email = get_unique_email()
-        client.post("/auth/register", json={"email": email, "password": "Pwd", "full_name": "Limit Tester"})
-        login_res = client.post("/auth/login", json={"email": email, "password": "Pwd"})
+        password = "Str0ng@Password123!"
+        reg = client.post("/auth/register", json={"email": email, "password": password, "full_name": "Limit Tester"})
+        assert reg.status_code == 201, f"Register failed: {reg.text}"
+        
+        login_res = client.post("/auth/login", json={"email": email, "password": password})
+        assert login_res.status_code == 200, f"Login failed: {login_res.text}"
         token = login_res.json()["access_token"]
 
-        headers = {"Authorization": f"Bearer {token}"}
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "X-Device-Token": '{"device_fp": "mock_fp_user"}',
+            "X-Session-ID": "mock_sess_user"
+        }
         response = client.get("/tracking/user/check-limit", headers=headers)
         assert response.status_code == 200
         data = response.json()
@@ -95,35 +108,43 @@ class TestTrackingFlow:
         assert data["limit"] > 0
 
 class TestWatchlistFlow:
-    def test_watchlist_operations(self):
+    def test_watchlist_operations(self, client):
         """Test Add/Remove/List Watchlist"""
         # 1. Create User
         email = get_unique_email()
-        client.post("/auth/register", json={"email": email, "password": "Pwd", "full_name": "Watchlist Tester"})
-        login = client.post("/auth/login", json={"email": email, "password": "Pwd"})
+        password = "Str0ng@Password123!"
+        reg = client.post("/auth/register", json={"email": email, "password": password, "full_name": "Watchlist Tester"})
+        assert reg.status_code == 201, f"Register failed: {reg.text}"
+
+        login = client.post("/auth/login", json={"email": email, "password": password})
+        assert login.status_code == 200, f"Login failed: {login.text}"
         token = login.json()["access_token"]
-        headers = {"Authorization": f"Bearer {token}"}
+        
+        headers = {
+            "Authorization": f"Bearer {token}",
+            "X-Device-Token": '{"device_fp": "mock_fp_watchlist"}',
+            "X-Session-ID": "mock_sess_watchlist"
+        }
         
         # 2. Add Stock
-        add_res = client.post("/user/watchlist/add", json={"ticker": "AAPL"}, headers=headers)
-        assert add_res.status_code == 200
-        assert add_res.json()["success"] is True
+        add_res = client.post("/api/watchlist", json={"ticker": "AAPL", "name": "Apple Inc"}, headers=headers)
+        assert add_res.status_code == 200, f"Add failed: {add_res.text}"
         
         # 3. Add Duplicate (Should Fail)
-        dup_res = client.post("/user/watchlist/add", json={"ticker": "AAPL"}, headers=headers)
+        dup_res = client.post("/api/watchlist", json={"ticker": "AAPL", "name": "Apple Inc"}, headers=headers)
         assert dup_res.status_code == 400
         
         # 4. Get Watchlist
-        get_res = client.get("/user/watchlist", headers=headers)
+        get_res = client.get("/api/watchlist", headers=headers)
         assert get_res.status_code == 200
         data = get_res.json()
-        assert data["count"] == 1
-        assert data["watchlist"][0]["ticker"] == "AAPL"
+        assert len(data) == 1
+        assert data[0]["ticker"] == "AAPL"
         
         # 5. Remove Stock
-        del_res = client.delete("/user/watchlist/AAPL", headers=headers)
+        del_res = client.delete("/api/watchlist/AAPL", headers=headers)
         assert del_res.status_code == 200
         
         # 6. Verify Empty
-        final_res = client.get("/user/watchlist", headers=headers)
-        assert final_res.json()["count"] == 0
+        final_res = client.get("/api/watchlist", headers=headers)
+        assert len(final_res.json()) == 0

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Query
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
-from app.services.embeddings import embedding_service
+from app.services.embeddings import get_embedding_service
 
 router = APIRouter(prefix="/news", tags=["news"])
 
@@ -43,7 +43,7 @@ def get_news_feed(
         filter_metadata = {"ticker": ticker} if ticker else None
         
         # Query recent news
-        search_results = embedding_service.query_similar(
+        search_results = get_embedding_service().query_similar(
             query_text="latest market news",
             n_results=limit,
             filter_metadata=filter_metadata

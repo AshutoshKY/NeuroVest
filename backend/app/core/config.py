@@ -33,8 +33,8 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     
     # Data Storage
-    DATA_DIR: str = "/app/data"
-    CHROMA_DB_PATH: str = os.getenv("CHROMA_DB_PATH", "/app/data/chroma_db")
+    DATA_DIR: str = os.getenv("DATA_DIR", "data")
+    CHROMA_DB_PATH: str = os.getenv("CHROMA_DB_PATH", "chroma_db_data")
     
     # ChromaDB Dynamic Temporal Retrieval Configuration
     TEMPORAL_DECAY_LAMBDA: float = 0.05  # Decay rate for temporal scoring

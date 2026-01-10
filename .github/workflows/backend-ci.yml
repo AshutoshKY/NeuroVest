@@ -72,6 +72,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}/backend
         # Required for app startup in integration tests
         JWT_SECRET_KEY: "test_secret_key_for_pipeline_execution"
+        CHROMA_DB_PATH: "chroma_db_test_data"
       run: |
         # Run All Standard Tests (Unit + Integration)
         echo "Running All Tests..."

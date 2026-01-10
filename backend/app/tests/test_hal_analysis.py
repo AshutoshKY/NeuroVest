@@ -8,7 +8,7 @@ import time
 import asyncio
 from app.services.data_ingestion import data_ingestion_service  
 from app.services.rag import rag_service
-from app.services.embeddings import embedding_service
+from app.services.embeddings import get_embedding_service
 
 
 async def test_hal_complete_flow():
@@ -53,7 +53,7 @@ async def test_hal_complete_flow():
     # 3. Check ChromaDB
     print(f"\n[3/4] Checking vector database...")
     try:
-        doc_count = embedding_service.get_collection_count()
+        doc_count = get_embedding_service().get_collection_count()
         print(f"   ✓ ChromaDB Documents: {doc_count}")
     except Exception as e:
         print(f"   ✗ Failed: {str(e)}")
