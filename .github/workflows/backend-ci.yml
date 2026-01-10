@@ -70,6 +70,8 @@ jobs:
         MYSQL_DATABASE: stock_market_db_test
         TESTING: "true"
         PYTHONPATH: ${{ github.workspace }}/backend
+        # Required for app startup in integration tests
+        JWT_SECRET_KEY: "test_secret_key_for_pipeline_execution"
       run: |
         # Run the comprehensive test script
         # This script handles its own unit and integration tests
