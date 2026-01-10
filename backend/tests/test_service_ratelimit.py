@@ -4,9 +4,9 @@ from app.services.rate_limiter import RateLimiter
 from app.core.config import settings
 
 @pytest.fixture
-def rate_limiter():
-    # Mock Redis is already patched in conftest
-    return RateLimiter()
+def rate_limiter(mock_redis_global):
+    # Inject mock explicitly
+    return RateLimiter(redis_client=mock_redis_global)
 
 @pytest.mark.asyncio
 async def test_check_rate_limit_allowed(rate_limiter, mock_redis_global):
@@ -17,6 +17,8 @@ async def test_check_rate_limit_allowed(rate_limiter, mock_redis_global):
     # Mock Request
     mock_request = MagicMock()
     mock_request.client.host = "127.0.0.1"
+    # Ensure headers.get returns strings
+    mock_request.headers.get.side_effect = lambda k, d=None: "mock_ua" if k == "User-Agent" else (d or "")
     
     # Arg: request, limit_type, max_requests, window_seconds
     allowed, count, retry = await rate_limiter.check_rate_limit(
@@ -38,6 +40,7 @@ async def test_check_rate_limit_exceeded(rate_limiter, mock_redis_global):
     # Mock Request
     mock_request = MagicMock()
     mock_request.client.host = "127.0.0.1"
+    mock_request.headers.get.side_effect = lambda k, d=None: "mock_ua" if k == "User-Agent" else (d or "")
 
     allowed, count, retry = await rate_limiter.check_rate_limit(
         mock_request,
