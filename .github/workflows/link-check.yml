@@ -1,0 +1,27 @@
+name: Link Checker
+
+on:
+  push:
+    branches: [ "main", "infra/*" ]
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'docs/**'
+      - '*.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  link-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Link Checker
+        uses: lycheeverse/lychee-action@v1.9.0
+        with:
+          # Check all markdown files in root and docs
+          args: --verbose --no-progress './docs/**/*.md' './*.md'
+          fail: true
