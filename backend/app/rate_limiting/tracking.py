@@ -88,7 +88,7 @@ class TrackingUtils:
             else:
                 client_ip = "unknown"
         except Exception as e:
-            print(f"DEBUG: request.client error: {e}, type: {type(getattr(request, 'client', 'MISSING'))}")
+            # Handle rare case where request.client exists but attributes fail
             client_ip = "unknown"
             
         logger.info(f"[TRACKING] ✅ Client IP (direct): {client_ip}")
