@@ -68,10 +68,10 @@ jobs:
         AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
         AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
         # DB Config for Test Service
-        MYSQL_SERVER: 127.0.0.1
+        MYSQL_HOST: 127.0.0.1
         MYSQL_USER: root
         MYSQL_PASSWORD: test_root_password
-        MYSQL_DB: stock_market_db_test
+        MYSQL_DATABASE: stock_market_db_test
         TESTING: "true"
         PYTHONPATH: ${{ github.workspace }}/backend
       run: |

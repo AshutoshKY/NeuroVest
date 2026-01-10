@@ -108,7 +108,7 @@ except Exception as e:
 print("\n[TEST 2] Risk Scoring Calculations...")
 try:
     from app.risk_scoring import calculate_risk_score
-    from app.signal_engine.schemas import SignalResponse, TrendData, MomentumData, VolatilityData, VolumeData, StructureData, SignalSummary, MarketContext, MACDData
+    from app.signal_engine.schemas import SignalResponse, TrendData, MomentumData, VolatilityData, VolumeData, StructureData, SignalSummary, MarketContext, MACDData, PriceContext
     
     # Create test signal
     test_signal = SignalResponse(
@@ -116,11 +116,12 @@ try:
         timeframe="swing",
         timestamp=datetime.now(),
         signal_summary=SignalSummary(directional_bias="bullish", confidence_score=0.75, primary_signal="trend", conviction="medium", risk_level="moderate"),
+        price=PriceContext(last_close=100.0, prev_close=99.0, gap_percent=1.0, high=101.0, low=99.0, open=99.5),
         trend=TrendData(trend_state="bullish", strength="strong", ema_20=100, ema_50=95, ema_200=90, ema_alignment_score=0.9),
         momentum=MomentumData(rsi_14=65, rsi_regime="neutral", macd=MACDData(value=1.5, signal=1.2, histogram=0.3, state="positive")),
         volatility=VolatilityData(atr_14=2.5, atr_percent=1.8, volatility_regime="normal", bollinger_bandwidth=0.15),
         volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="expanding", volume_confirmation=True, volume_spike=False),
-        structure=StructureData(market_structure="uptrend", support_levels=[90, 85], resistance_levels=[110, 115])
+        structure=StructureData(market_structure="uptrend", swing_high=110.0, swing_low=90.0, support_levels=[90, 85], resistance_levels=[110, 115], pivot_point=100.0)
     )
     
     market_context = MarketContext(nifty_trend="bullish", vix_value=15.0, vix_regime="normal")
