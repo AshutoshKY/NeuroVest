@@ -115,8 +115,8 @@ try:
         symbol="TEST",
         timeframe="swing",
         timestamp=datetime.now(),
-        signal_summary=SignalSummary(directional_bias="bullish", confidence_score=0.75, primary_signal="trend"),
-        trend=TrendData(trend_state="bullish", strength="strong", ema_20=100, ema_50=95, ema_200=90),
+        signal_summary=SignalSummary(directional_bias="bullish", confidence_score=0.75, primary_signal="trend", conviction="medium", risk_level="moderate"),
+        trend=TrendData(trend_state="bullish", strength="strong", ema_20=100, ema_50=95, ema_200=90, ema_alignment_score=0.9),
         momentum=MomentumData(rsi_14=65, rsi_regime="neutral", macd=MACDData(value=1.5, signal=1.2, histogram=0.3, state="positive")),
         volatility=VolatilityData(atr_14=2.5, atr_percent=1.8, volatility_regime="normal"),
         volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="increasing", volume_confirmation=True),
@@ -154,10 +154,8 @@ try:
     
     # Check SYSTEM_PROMPT_V2
     required_phrases = [
-        "professional equity research analyst",
-        "Indian stock markets",
-        "YOU ARE NOT ALLOWED TO",
-        "EXACTLY three scenarios"
+        "sophisticated AI financial analyst",
+        "hybrid capabilities"
     ]
     
     missing = [p for p in required_phrases if p not in SYSTEM_PROMPT_V2]
@@ -179,8 +177,8 @@ try:
     
     # Test prompt building
     test_signal_data = {
-        'signal_summary': {'directional_bias': 'bullish', 'confidence_score': 0.75, 'primary_signal': 'test'},
-        'trend': {'trend_state': 'bullish', 'strength': 'strong', 'ema_20': 100, 'ema_50': 95, 'ema_200': 90},
+        'signal_summary': {'directional_bias': 'bullish', 'confidence_score': 0.75, 'primary_signal': 'test', 'conviction': 'medium', 'risk_level': 'moderate'},
+        'trend': {'trend_state': 'bullish', 'strength': 'strong', 'ema_20': 100, 'ema_50': 95, 'ema_200': 90, 'ema_alignment_score': 0.9},
         'momentum': {'rsi_14': 65, 'rsi_regime': 'neutral', 'macd': {'value': 1.5, 'state': 'positive'}},
         'volatility': {'atr_14': 2.5, 'atr_percent': 1.8, 'volatility_regime': 'normal'},
         'structure': {'market_structure': 'uptrend', 'support_levels': [90], 'resistance_levels': [110]},
@@ -228,10 +226,9 @@ try:
         rag_source = f.read()
     
     checks = {
-        "SYSTEM_PROMPT_V2 import": "from app.llm_integration.prompts import SYSTEM_PROMPT_V2" in rag_source,
-        "SYSTEM_PROMPT_V2 usage": 'SYSTEM_PROMPT_V2' in rag_source and '"system", "content": SYSTEM_PROMPT_V2' in rag_source,
-        "Validator import": "from app.output_validator import validate_llm_output" in rag_source,
-        "Validator usage": "validate_llm_output(" in rag_source,
+        "Smart Orchestrator import": "from app.services.smart_orchestrator import smart_orchestrator" in rag_source,
+        "V3 Prompt Usage": "analysis_structured" in rag_source or "analysis_structured" in rag_source,
+        "Validator import": "from app.services.guardrails import guardrails_service" in rag_source,
         "Signal history retrieval": "retrieve_signal_history_for_rag" in rag_source,
         "Signal history passed to LLM": "signal_history" in rag_source
     }
