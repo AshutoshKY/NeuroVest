@@ -93,3 +93,37 @@ class TestTrackingFlow:
         assert data["role"] == "user"
         # User limit should be higher/different or at least valid
         assert data["limit"] > 0
+
+class TestWatchlistFlow:
+    def test_watchlist_operations(self):
+        """Test Add/Remove/List Watchlist"""
+        # 1. Create User
+        email = get_unique_email()
+        client.post("/auth/register", json={"email": email, "password": "Pwd", "full_name": "Watchlist Tester"})
+        login = client.post("/auth/login", json={"email": email, "password": "Pwd"})
+        token = login.json()["access_token"]
+        headers = {"Authorization": f"Bearer {token}"}
+        
+        # 2. Add Stock
+        add_res = client.post("/user/watchlist/add", json={"ticker": "AAPL"}, headers=headers)
+        assert add_res.status_code == 200
+        assert add_res.json()["success"] is True
+        
+        # 3. Add Duplicate (Should Fail)
+        dup_res = client.post("/user/watchlist/add", json={"ticker": "AAPL"}, headers=headers)
+        assert dup_res.status_code == 400
+        
+        # 4. Get Watchlist
+        get_res = client.get("/user/watchlist", headers=headers)
+        assert get_res.status_code == 200
+        data = get_res.json()
+        assert data["count"] == 1
+        assert data["watchlist"][0]["ticker"] == "AAPL"
+        
+        # 5. Remove Stock
+        del_res = client.delete("/user/watchlist/AAPL", headers=headers)
+        assert del_res.status_code == 200
+        
+        # 6. Verify Empty
+        final_res = client.get("/user/watchlist", headers=headers)
+        assert final_res.json()["count"] == 0
