@@ -418,7 +418,10 @@ class StockAPIService:
             import yfinance as yf
             
             suffixes_to_try = []
-            if not ticker.endswith(('.NS', '.BO')):
+            # Don't add .NS/.BO for index symbols (they start with ^)
+            if ticker.startswith('^'):
+                suffixes_to_try = [ticker]  # Index symbols are already valid
+            elif not ticker.endswith(('.NS', '.BO')):
                 suffixes_to_try = [f"{ticker}.NS", f"{ticker}.BO"]
             else:
                 suffixes_to_try = [ticker]
@@ -813,7 +816,10 @@ class StockAPIService:
             import yfinance as yf
             
             suffixes_to_try = []
-            if not ticker.endswith(('.NS', '.BO')):
+            # Don't add .NS/.BO for index symbols (they start with ^)
+            if ticker.startswith('^'):
+                suffixes_to_try = [ticker]  # Index symbols are already valid
+            elif not ticker.endswith(('.NS', '.BO')):
                 suffixes_to_try = [f"{ticker}.NS", f"{ticker}.BO"]
             else:
                 suffixes_to_try = [ticker]
@@ -838,7 +844,10 @@ class StockAPIService:
             from yahooquery import Ticker
             
             suffixes_to_try = []
-            if not ticker.endswith(('.NS', '.BO')):
+            # Don't add .NS/.BO for index symbols (they start with ^)
+            if ticker.startswith('^'):
+                suffixes_to_try = [ticker]  # Index symbols are already valid
+            elif not ticker.endswith(('.NS', '.BO')):
                 suffixes_to_try = [f"{ticker}.NS", f"{ticker}.BO"]
             else:
                 suffixes_to_try = [ticker]

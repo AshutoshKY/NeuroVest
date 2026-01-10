@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - Infrastructure</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { bg: '#020617', surface: '#0f172a', border: '#1e293b', primary: '#6366f1', success: '#10b981', danger: '#ef4444' } } } }</script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .nav-link.active {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid #6366f1;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm font-sans">
+
+    <!-- SIDEBAR (COPY from Overview, change active link) -->
+    <aside class="w-64 bg-surface border-r border-border flex flex-col shrink-0 z-50">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-border">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold">N</div>
+            <div class="font-bold text-white tracking-tight">NeuroVest</div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 mb-2">Platform</div>
+            <a href="admin_overview.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Overview</a>
+            <a href="admin_infrastructure.html"
+                class="nav-link active flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Infrastructure</a>
+            <a href="admin_ai_rag.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">AI & RAG
+                Engine</a>
+            <a href="admin_api_health.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">External
+                APIs</a>
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Operations</div>
+            <a href="admin_users.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">User
+                Intelligence</a>
+            <a href="admin_security.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Security &
+                Audit</a>
+            <a href="admin_controls.html" class="nav-link flex items-center gap-3 px-6 py-3 text-danger font-bold">Kill
+                Switches</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-y-auto bg-bg">
+        <header
+            class="h-16 px-8 border-b border-border flex items-center justify-between bg-surface/50 backdrop-blur sticky top-0 z-20">
+            <h1 class="text-xl font-bold text-white">Infrastructure & Database Health</h1>
+            <button class="bg-primary hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-xs font-bold">Scale
+                Resources</button>
+        </header>
+
+        <div class="p-8 space-y-8">
+
+            <!-- REDIS SECTION -->
+            <section>
+                <div class="flex items-center gap-3 mb-4"><span class="w-2 h-6 bg-danger rounded"></span>
+                    <h2 class="text-lg font-bold text-white">Redis (Cache Layer)</h2>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div class="bg-surface border border-border p-6 rounded-xl">
+                        <div class="text-xs text-slate-500 uppercase font-bold">Cache Hit Ratio</div>
+                        <div id="chart-redis-hit" class="h-32 -mx-4"></div>
+                        <div class="text-center text-3xl font-mono text-white mt-[-20px]">94.2%</div>
+                    </div>
+                    <div class="bg-surface border border-border p-6 rounded-xl">
+                        <div class="text-xs text-slate-500 uppercase font-bold">Memory Usage</div>
+                        <div class="text-2xl text-white font-mono mt-2">14.2 GB <span class="text-xs text-slate-500">/
+                                32 GB</span></div>
+                        <div class="w-full bg-slate-800 h-2 mt-4 rounded-full overflow-hidden">
+                            <div class="bg-danger h-full w-[45%]"></div>
+                        </div>
+                    </div>
+                    <div class="bg-surface border border-border p-6 rounded-xl">
+                        <div class="text-xs text-slate-500 uppercase font-bold">Commands / Sec</div>
+                        <div class="text-2xl text-white font-mono mt-2">12,450</div>
+                        <div id="chart-redis-ops" class="h-20 mt-2"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- CHROMA DB SECTION -->
+            <section>
+                <div class="flex items-center gap-3 mb-4"><span class="w-2 h-6 bg-primary rounded"></span>
+                    <h2 class="text-lg font-bold text-white">ChromaDB (Vector Search)</h2>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <div class="bg-surface border border-border p-6 rounded-xl">
+                        <h3 class="text-sm font-bold text-white mb-4">Vector Count vs Query Latency</h3>
+                        <div id="chart-chroma" class="w-full h-64"></div>
+                    </div>
+                    <div class="bg-surface border border-border p-6 rounded-xl">
+                        <h3 class="text-sm font-bold text-white mb-4">Collection Sizes</h3>
+                        <div class="space-y-4 font-mono text-xs">
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span>Stocks_Daily_Vectors</span><span>4.2M</span></div>
+                                <div class="w-full bg-slate-800 h-1.5 rounded">
+                                    <div class="bg-primary w-[80%] h-full rounded"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1">
+                                    <span>News_Sentiment_Embeddings</span><span>12.5M</span></div>
+                                <div class="w-full bg-slate-800 h-1.5 rounded">
+                                    <div class="bg-purple-500 w-[95%] h-full rounded"></div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between mb-1"><span>User_Profiles</span><span>150K</span></div>
+                                <div class="w-full bg-slate-800 h-1.5 rounded">
+                                    <div class="bg-success w-[10%] h-full rounded"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- SERVER METRICS -->
+            <section>
+                <div class="flex items-center gap-3 mb-4"><span class="w-2 h-6 bg-success rounded"></span>
+                    <h2 class="text-lg font-bold text-white">Cluster Metrics (CPU/Storage)</h2>
+                </div>
+                <div class="bg-surface border border-border p-6 rounded-xl">
+                    <div id="chart-cluster" class="w-full h-72"></div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        const common = { chart: { toolbar: { show: false }, background: 'transparent', foreColor: '#94a3b8' }, theme: { mode: 'dark' }, grid: { borderColor: '#1e293b' } };
+
+        // Redis Hit Rate
+        new ApexCharts(document.querySelector("#chart-redis-hit"), {
+            series: [94], chart: { type: 'radialBar', height: 200 },
+            colors: ['#ef4444'], plotOptions: { radialBar: { hollow: { size: '60%' }, dataLabels: { show: false } } }
+        }).render();
+
+        // Redis Ops Sparkline
+        new ApexCharts(document.querySelector("#chart-redis-ops"), {
+            series: [{ data: [40, 55, 30, 60, 45, 70, 55, 80, 60] }], chart: { type: 'area', sparkline: { enabled: true } },
+            colors: ['#ef4444'], fill: { type: 'gradient' }
+        }).render();
+
+        // Chroma Chart
+        new ApexCharts(document.querySelector("#chart-chroma"), {
+            ...common,
+            series: [{ name: 'Latency (ms)', type: 'line', data: [120, 135, 110, 180, 140, 125, 130] }, { name: 'Vectors (M)', type: 'bar', data: [12, 12.1, 12.2, 12.3, 12.4, 12.5, 12.6] }],
+            chart: { height: 280, type: 'line', background: 'transparent' },
+            colors: ['#10b981', '#6366f1'], stroke: { width: [3, 0] },
+            yaxis: [{ title: { text: 'ms' } }, { opposite: true, title: { text: 'Millions' } }]
+        }).render();
+
+        // Cluster Heatmap (CPU Usage per Node)
+        const genHeat = (c) => { let d = []; for (let i = 0; i < c; i++) d.push({ x: 'Node-' + (i + 1), y: Math.floor(Math.random() * 90) }); return d; }
+        new ApexCharts(document.querySelector("#chart-cluster"), {
+            series: [{ name: 'CPU %', data: genHeat(20) }, { name: 'RAM %', data: genHeat(20) }, { name: 'Disk IO', data: genHeat(20) }],
+            chart: { type: 'heatmap', height: 300, background: 'transparent' },
+            colors: ['#6366f1'], theme: { mode: 'dark' }
+        }).render();
+    </script>
+</body>
+
+</html>

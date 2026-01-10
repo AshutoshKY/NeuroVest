@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - AI Engine</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { bg: '#020617', surface: '#0f172a', border: '#1e293b', primary: '#6366f1', success: '#10b981', danger: '#ef4444', warning: '#f59e0b' } } } }</script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .nav-link.active {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid #6366f1;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm font-sans">
+
+    <!-- SIDEBAR (COPY structure) -->
+    <aside class="w-64 bg-surface border-r border-border flex flex-col shrink-0 z-50">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-border">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold">N</div>
+            <div class="font-bold text-white tracking-tight">NeuroVest</div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 mb-2">Platform</div>
+            <a href="admin_overview.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Overview</a>
+            <a href="admin_infrastructure.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Infrastructure</a>
+            <a href="admin_ai_rag.html"
+                class="nav-link active flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">AI
+                & RAG Engine</a>
+            <!-- Add other links similarly -->
+            <a href="admin_controls.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-danger font-bold mt-auto">Kill Switches</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-y-auto bg-bg">
+        <header
+            class="h-16 px-8 border-b border-border flex items-center justify-between bg-surface/50 backdrop-blur sticky top-0 z-20">
+            <h1 class="text-xl font-bold text-white">AI Engine & Guardrails</h1>
+            <div class="flex gap-4">
+                <div class="text-right">
+                    <div class="text-xs text-slate-500">24h Cost</div>
+                    <div class="text-sm font-mono text-warning">$843.20</div>
+                </div>
+                <div class="text-right">
+                    <div class="text-xs text-slate-500">Tokens/Sec</div>
+                    <div class="text-sm font-mono text-white">45k</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-8">
+
+            <!-- TOKENOMICS -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 bg-surface border border-border p-6 rounded-xl">
+                    <h3 class="font-bold text-white mb-4">Token Usage (Input vs Output)</h3>
+                    <div id="chart-tokens" class="w-full h-72"></div>
+                </div>
+                <div class="bg-surface border border-border p-6 rounded-xl flex flex-col">
+                    <h3 class="font-bold text-white mb-2">Cost by Model</h3>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div id="chart-models" class="w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RAG & GUARDRAILS -->
+            <section>
+                <h2 class="text-lg font-bold text-white mb-4">RAG Pipeline Health</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <!-- Metrics -->
+                    <div class="space-y-4">
+                        <div class="bg-surface border border-border p-5 rounded-xl">
+                            <div class="text-xs text-slate-500 uppercase font-bold">Retrieval Latency</div>
+                            <div class="text-2xl text-white font-mono mt-1">320ms</div>
+                            <div class="w-full bg-slate-800 h-1 mt-2 rounded">
+                                <div class="bg-primary w-[60%] h-full rounded"></div>
+                            </div>
+                        </div>
+                        <div class="bg-surface border border-border p-5 rounded-xl">
+                            <div class="text-xs text-slate-500 uppercase font-bold">Generation Latency</div>
+                            <div class="text-2xl text-white font-mono mt-1">1.8s</div>
+                            <div class="w-full bg-slate-800 h-1 mt-2 rounded">
+                                <div class="bg-warning w-[80%] h-full rounded"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Guardrail Logs -->
+                    <div class="md:col-span-2 bg-surface border border-border rounded-xl overflow-hidden">
+                        <div class="p-4 border-b border-border bg-danger/5 flex justify-between items-center">
+                            <span class="font-bold text-danger">Guardrail Rejections (Last 1h)</span>
+                            <span class="text-xs bg-danger text-white px-2 py-0.5 rounded">14 Blocked</span>
+                        </div>
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-surface text-slate-500 uppercase">
+                                <tr>
+                                    <th class="p-3">Type</th>
+                                    <th class="p-3">Prompt Snippet</th>
+                                    <th class="p-3">Confidence</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-border text-slate-300">
+                                <tr>
+                                    <td class="p-3 text-danger">Financial Advice</td>
+                                    <td class="p-3 font-mono">"Buy RELIANCE now, guaranteed profit..."</td>
+                                    <td class="p-3">99%</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 text-warning">Toxicity</td>
+                                    <td class="p-3 font-mono">"This stock is garbage dump..."</td>
+                                    <td class="p-3">88%</td>
+                                </tr>
+                                <tr>
+                                    <td class="p-3 text-danger">Pernicious</td>
+                                    <td class="p-3 font-mono">"Ignore the risks, go all in..."</td>
+                                    <td class="p-3">92%</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script>
+        const common = { chart: { toolbar: { show: false }, background: 'transparent', foreColor: '#94a3b8' }, theme: { mode: 'dark' }, grid: { borderColor: '#1e293b' } };
+
+        new ApexCharts(document.querySelector("#chart-tokens"), {
+            ...common,
+            series: [{ name: 'Input Tokens', data: [30, 40, 35, 50, 49, 60, 70] }, { name: 'Output Tokens', data: [20, 30, 25, 40, 35, 50, 60] }],
+            chart: { type: 'bar', height: 300, stacked: true },
+            colors: ['#6366f1', '#10b981']
+        }).render();
+
+        new ApexCharts(document.querySelector("#chart-models"), {
+            series: [55, 30, 15], labels: ['GPT-4 Turbo', 'GPT-3.5', 'Ada-002'],
+            chart: { type: 'donut', height: 250 }, colors: ['#6366f1', '#a855f7', '#94a3b8'],
+            legend: { position: 'bottom' }
+        }).render();
+    </script>
+</body>
+
+</html>
