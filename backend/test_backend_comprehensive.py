@@ -119,7 +119,7 @@ try:
         trend=TrendData(trend_state="bullish", strength="strong", ema_20=100, ema_50=95, ema_200=90, ema_alignment_score=0.9),
         momentum=MomentumData(rsi_14=65, rsi_regime="neutral", macd=MACDData(value=1.5, signal=1.2, histogram=0.3, state="positive")),
         volatility=VolatilityData(atr_14=2.5, atr_percent=1.8, volatility_regime="normal", bollinger_bandwidth=0.15),
-        volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="increasing", volume_confirmation=True),
+        volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="expanding", volume_confirmation=True, volume_spike=False),
         structure=StructureData(market_structure="uptrend", support_levels=[90, 85], resistance_levels=[110, 115])
     )
     
@@ -182,7 +182,7 @@ try:
         'momentum': {'rsi_14': 65, 'rsi_regime': 'neutral', 'macd': {'value': 1.5, 'state': 'positive'}},
         'volatility': {'atr_14': 2.5, 'atr_percent': 1.8, 'volatility_regime': 'normal', 'bollinger_bandwidth': 0.15},
         'structure': {'market_structure': 'uptrend', 'support_levels': [90], 'resistance_levels': [110]},
-        'volume': {'today_vs_20d_avg': 1.2, 'volume_trend': 'increasing', 'volume_confirmation': True}
+        'volume': {'today_vs_20d_avg': 1.2, 'volume_trend': 'expanding', 'volume_confirmation': True, 'volume_spike': False}
     }
     
     test_scenarios_data = [
