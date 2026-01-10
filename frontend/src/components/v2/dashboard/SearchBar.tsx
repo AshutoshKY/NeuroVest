@@ -37,7 +37,7 @@ export function SearchBar({
     placeholder = "Search ticker (e.g. RELIANCE)..."
 }: SearchBarProps) {
     return (
-        <div className="relative w-full max-w-[600px] group z-10">
+        <div className="relative w-full max-w-6xl group z-10">
             {/* Search Icon */}
             <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none">
                 <Search className="w-6 h-6 text-gray-400" />
@@ -49,7 +49,7 @@ export function SearchBar({
                 value={value}
                 onChange={(e) => onChange(e.target.value)}
                 onKeyDown={onKeyDown}
-                className="w-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-full py-7 pl-14 pr-20 text-2xl text-gray-900 dark:text-white shadow-xl dark:shadow-none focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition placeholder-gray-400"
+                className="w-full bg-white dark:bg-[#18181b] border border-gray-200 dark:border-zinc-800 rounded-full py-6 pl-14 pr-20 text-xl text-gray-900 dark:text-white shadow-xl dark:shadow-none focus:outline-none focus:border-primary-500 focus:ring-2 focus:ring-primary-500/20 transition placeholder-gray-400"
                 placeholder={placeholder}
                 disabled={disabled}
             />

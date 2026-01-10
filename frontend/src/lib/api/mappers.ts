@@ -72,22 +72,12 @@ export interface AnalysisV2Data {
  * Handles missing fields with intelligent fallbacks
  */
 export function mapAnalysisToV2(rawData: any): AnalysisV2Data {
-    // Extract narrative as string (AnalysisView expects string, not object)
-    const narrativeText = rawData.analysis_structured?.full_text || rawData.analysis || 
-                         rawData.prediction_structured?.outlook || rawData.prediction || 
-                         'Analysis complete.';
-
     return {
-        // Core fields - matching what AnalysisView expects
+        // Core fields
         ticker: rawData.ticker || '',
         price: rawData.current_price || 0,
-        current_price: rawData.current_price || 0, // AnalysisView looks for this
-        price_change_percent: rawData.price_change_percent || 0, // AnalysisView looks for this
         sentiment: rawData.sentiment?.classification || 'Neutral',
-        sentiment_label: rawData.sentiment?.classification || 'neutral', // AnalysisView looks for this  
-        trend: deriveTrendBias(rawData) === 'bullish' ? 'Upward' : deriveTrendBias(rawData) === 'bearish' ? 'Downward' : 'Neutral', // AnalysisView looks for this
         confidence: ((rawData.sentiment?.average_confidence || rawData.sentiment?.confidence || 0) * 100),
-        ai_confidence: ((rawData.sentiment?.average_confidence || rawData.sentiment?.confidence || 0) * 100),
 
         // Market State
         market_state: rawData.market_state || {
@@ -114,8 +104,13 @@ export function mapAnalysisToV2(rawData: any): AnalysisV2Data {
             risk_level: 'unknown'
         },
 
-        // Narrative - as string for AnalysisView
-        narrative: narrativeText,
+        // Narrative
+        narrative: {
+            analysis_summary: rawData.analysis_structured?.summary || '',
+            analysis_text: rawData.analysis_structured?.full_text || rawData.analysis || '',
+            prediction_summary: rawData.prediction_structured?.summary || '',
+            prediction_text: rawData.prediction_structured?.outlook || rawData.prediction || ''
+        },
 
         // Legacy fields
         historicalDataMulti: rawData.historical_data_multi || {},

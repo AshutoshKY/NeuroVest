@@ -66,10 +66,23 @@ class SignalHistoryService:
         signal_id = f"{signal.symbol}_{signal.timeframe}_{int(signal.timestamp.timestamp())}"
         
         try:
-            # Extract scenario data
-            base_scenario = scenarios.scenarios[0]  # Base case
-            bull_scenario = scenarios.scenarios[1]  # Bull case
-            bear_scenario = scenarios.scenarios[2]  # Bear case
+            # Find scenarios by type (scenarios is a List[Dict], not an object)
+            base_scenario = next((s for s in scenarios if s.get("type") == "base"), scenarios[0] if scenarios else {})
+            bull_scenario = next((s for s in scenarios if s.get("type") == "bull"), scenarios[1] if len(scenarios) > 1 else {})
+            bear_scenario = next((s for s in scenarios if s.get("type") == "bear"), scenarios[2] if len(scenarios) > 2 else {})
+            
+            # Helper to parse "1234.56 - 5678.90" target_zone string into [low, high]
+            def parse_target_zone(zone_str: str) -> tuple:
+                try:
+                    parts = zone_str.replace(",", "").split(" - ")
+                    return (float(parts[0]), float(parts[1]))
+                except:
+                    return (0.0, 0.0)
+            
+            # Extract price ranges from target_zone strings
+            base_range = parse_target_zone(base_scenario.get("target_zone", "0 - 0"))
+            bull_range = parse_target_zone(bull_scenario.get("target_zone", "0 - 0"))
+            bear_range = parse_target_zone(bear_scenario.get("target_zone", "0 - 0"))
             
             # Create signal record
             record = SignalRecord(
@@ -81,16 +94,16 @@ class SignalHistoryService:
                 confidence_score=signal.signal_summary.confidence_score,
                 risk_score=risk_score,
                 entry_price=signal.price.last_close,
-                base_case_low=base_scenario.price_range[0],
-                base_case_high=base_scenario.price_range[1],
-                base_case_probability=base_scenario.probability,
-                bull_case_low=bull_scenario.price_range[0],
-                bull_case_high=bull_scenario.price_range[1],
-                bull_case_probability=bull_scenario.probability,
-                bear_case_low=bear_scenario.price_range[0],
-                bear_case_high=bear_scenario.price_range[1],
-                bear_case_probability=bear_scenario.probability,
-                invalidation_level=base_scenario.price_range[0] * 0.97  # Simplified
+                base_case_low=base_range[0],
+                base_case_high=base_range[1],
+                base_case_probability=base_scenario.get("probability", 0.0),
+                bull_case_low=bull_range[0],
+                bull_case_high=bull_range[1],
+                bull_case_probability=bull_scenario.get("probability", 0.0),
+                bear_case_low=bear_range[0],
+                bear_case_high=bear_range[1],
+                bear_case_probability=bear_scenario.get("probability", 0.0),
+                invalidation_level=base_range[0] * 0.97 if base_range[0] > 0 else 0.0
             )
             
             #  Store in ChromaDB
