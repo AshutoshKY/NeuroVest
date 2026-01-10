@@ -108,7 +108,7 @@ except Exception as e:
 print("\n[TEST 2] Risk Scoring Calculations...")
 try:
     from app.risk_scoring import calculate_risk_score
-    from app.signal_engine.schemas import SignalResponse, TrendData, MomentumData, VolatilityData, VolumeData, StructureData, SignalSummary, MarketContext, MACDData, PriceContext
+    from app.signal_engine.schemas import SignalResponse, TrendData, MomentumData, VolatilityData, VolumeData, StructureData, SignalSummary, MarketContext, MACDData, PriceContext, RelativeStrengthData
     
     # Create test signal
     test_signal = SignalResponse(
@@ -121,10 +121,10 @@ try:
         momentum=MomentumData(rsi_14=65, rsi_regime="neutral", macd=MACDData(value=1.5, signal=1.2, histogram=0.3, state="positive")),
         volatility=VolatilityData(atr_14=2.5, atr_percent=1.8, volatility_regime="normal", bollinger_bandwidth=0.15),
         volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="expanding", volume_confirmation=True, volume_spike=False),
-        structure=StructureData(market_structure="higher_high", swing_high=110.0, swing_low=90.0, support_levels=[90, 85], resistance_levels=[110, 115], pivot_point=100.0)
+        structure=StructureData(market_structure="higher_high", swing_high=110.0, swing_low=90.0, support_levels=[90, 85], resistance_levels=[110, 115], pivot_point=100.0),
+        relative_strength=RelativeStrengthData(vs_nifty=1.05, vs_sector=1.02, sector_symbol="NIFTY_AUTO", sector_trend="strong", market_leadership="leader"),
+        market_context=MarketContext(nifty_trend="bullish", nifty_close=22000.0, india_vix=12.5, vix_regime="normal", macro_bias="risk_on")
     )
-    
-    market_context = MarketContext(nifty_trend="bullish", vix_value=15.0, vix_regime="normal")
     
     risk_assessment = calculate_risk_score(test_signal, market_context, rs_vs_sector=1.1, sentiment_score=0.2)
     
@@ -183,7 +183,9 @@ try:
         'momentum': {'rsi_14': 65, 'rsi_regime': 'neutral', 'macd': {'value': 1.5, 'state': 'positive'}},
         'volatility': {'atr_14': 2.5, 'atr_percent': 1.8, 'volatility_regime': 'normal', 'bollinger_bandwidth': 0.15},
         'structure': {'market_structure': 'higher_high', 'support_levels': [90], 'resistance_levels': [110]},
-        'volume': {'today_vs_20d_avg': 1.2, 'volume_trend': 'expanding', 'volume_confirmation': True, 'volume_spike': False}
+        'volume': {'today_vs_20d_avg': 1.2, 'volume_trend': 'expanding', 'volume_confirmation': True, 'volume_spike': False},
+        'relative_strength': {'vs_nifty': 1.05, 'vs_sector': 1.02, 'sector_symbol': 'NIFTY_AUTO', 'sector_trend': 'strong', 'market_leadership': 'leader'},
+        'market_context': {'nifty_trend': 'bullish', 'nifty_close': 22000.0, 'india_vix': 12.5, 'vix_regime': 'normal', 'macro_bias': 'risk_on'}
     }
     
     test_scenarios_data = [
