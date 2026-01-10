@@ -2,11 +2,11 @@ name: Python Security (Bandit)
 
 on:
   push:
-    branches: [ "main", "infra/*" ]
+    branches: [ "**" ]
     paths:
       - 'backend/**'
   pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
     paths:
       - 'backend/**'
 

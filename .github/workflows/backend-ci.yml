@@ -2,9 +2,9 @@ name: Backend CI
 
 on:
   push:
-    branches: [ "main", "infra/*" ]
+    branches: [ "**" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "**" ]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -72,6 +72,7 @@ jobs:
         PYTHONPATH: ${{ github.workspace }}/backend
         # Required for app startup in integration tests
         JWT_SECRET_KEY: "test_secret_key_for_pipeline_execution"
+      run: |
         # Run All Standard Tests (Unit + Integration)
         echo "Running All Tests..."
         pytest tests/ -v
