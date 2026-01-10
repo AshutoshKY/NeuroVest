@@ -39,7 +39,12 @@ def client():
     app.rate_limiting.guest_limiter._guest_limiter = None
     app.rate_limiting.user_limiter._user_limiter = None
     app.rate_limiting.admin_limiter._admin_limiter = None
+    app.rate_limiting.admin_limiter._admin_limiter = None
     app.rate_limiting.limiter._rate_limiter = None
+    
+    # Reset JWT Key Manager
+    import app.core.jwt_key_manager
+    app.core.jwt_key_manager._jwt_key_manager = None
 
     fastapi_app.dependency_overrides[get_db] = override_get_db
 
@@ -55,7 +60,8 @@ def client():
 def mock_redis_global():
     """Mock Redis globally for all tests."""
     with patch("app.core.redis_client.get_redis") as mock_get, \
-         patch("app.rate_limiting.base.get_redis") as mock_base_get:
+         patch("app.rate_limiting.base.get_redis") as mock_base_get, \
+         patch("app.core.jwt_key_manager.get_redis") as mock_jwt_get:
         
         mock_instance = MagicMock()
         # Mock pipeline
@@ -69,6 +75,7 @@ def mock_redis_global():
         
         mock_get.return_value = mock_instance
         mock_base_get.return_value = mock_instance
+        mock_jwt_get.return_value = mock_instance
         yield mock_instance
 
 @pytest.fixture(scope="session", autouse=True)
