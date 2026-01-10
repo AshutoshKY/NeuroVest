@@ -1859,6 +1859,10 @@ RISK ASSESSMENT:
             })
             
             # Call LLM with V3 probabilistic prompt
+            import time
+            import uuid
+            llm_call_start = time.time()
+            
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
@@ -1869,6 +1873,29 @@ RISK ASSESSMENT:
                 max_tokens=3000,
                 response_format={"type": "json_object"}
             )
+            
+            llm_call_end = time.time()
+            llm_latency_ms = (llm_call_end - llm_call_start) * 1000
+            
+            # Track AI metrics (Phase 5)
+            try:
+                from app.services.ai_metrics import AIMetricsService, AIUsageType, AIProvider
+                
+                usage = response.usage
+                if usage:
+                    AIMetricsService.record_request(
+                        request_id=str(uuid.uuid4())[:8],
+                        usage_type=AIUsageType.RAG_ANALYSIS,
+                        provider=AIProvider.AZURE_OPENAI,
+                        model=self.model,
+                        prompt_tokens=usage.prompt_tokens,
+                        completion_tokens=usage.completion_tokens,
+                        latency_ms=llm_latency_ms,
+                        ticker=ticker,
+                        success=True
+                    )
+            except Exception as metrics_err:
+                logger.warning(f"[AI_METRICS] Failed to record: {metrics_err}")
             
             # Module-level json import at line 6 is used
             result = json.loads(response.choices[0].message.content)

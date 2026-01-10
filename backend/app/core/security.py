@@ -48,10 +48,16 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     Falls back to static key if key manager unavailable.
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
+    now = datetime.utcnow()
+    expire = now + (expires_delta or timedelta(minutes=settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES))
     
-    # CRITICAL: JWT expects exp as integer timestamp, not datetime object
-    to_encode.update({"exp": int(expire.timestamp()), "type": "access"})
+    # CRITICAL: JWT expects exp and iat as integer timestamp, not datetime object
+    # iat (issued-at) is used for auth_epoch validation (force logout)
+    to_encode.update({
+        "exp": int(expire.timestamp()),
+        "iat": int(now.timestamp()),  # Required for auth_epoch validation
+        "type": "access"
+    })
     
     # Try to use key manager for rotation support
     try:
@@ -74,10 +80,16 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None) 
     Falls back to static key if key manager unavailable.
     """
     to_encode = data.copy()
-    expire = datetime.utcnow() + (expires_delta or timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS))
+    now = datetime.utcnow()
+    expire = now + (expires_delta or timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS))
     
-    # CRITICAL: JWT expects exp as integer timestamp, not datetime object
-    to_encode.update({"exp": int(expire.timestamp()), "type": "refresh"})
+    # CRITICAL: JWT expects exp and iat as integer timestamp, not datetime object
+    # iat (issued-at) is used for auth_epoch validation (force logout)
+    to_encode.update({
+        "exp": int(expire.timestamp()),
+        "iat": int(now.timestamp()),  # Required for auth_epoch validation
+        "type": "refresh"
+    })
     
     # Try to use key manager for rotation support
     try:
@@ -146,6 +158,24 @@ def verify_token(token: str, token_type: str = "access") -> Optional[dict]:
                 key_status = "current"  # Only one key means it's the current key from manager
             else:
                 key_status = ["current", "previous_1", "previous_2"][i]
+            
+            # ========== AUTH EPOCH CHECK (JWT Invalidation) ==========
+            # Check if token was issued after current auth_epoch
+            # This enables force logout by incrementing the epoch
+            try:
+                from app.services.session_control import is_token_valid_by_epoch
+                token_iat = payload.get("iat")
+                if token_iat:
+                    if not is_token_valid_by_epoch(token_iat):
+                        logger.warning(f"[JWT] ❌ Token invalidated by auth_epoch: iat={token_iat}")
+                        continue
+                else:
+                    # Legacy tokens without iat - allow but log
+                    logger.debug("[JWT] Token missing 'iat' claim - skipping epoch check")
+            except Exception as e:
+                # If epoch check fails, allow token (fail open for availability)
+                logger.error(f"[JWT] Auth epoch check failed, allowing token: {e}")
+            # ========== END AUTH EPOCH CHECK ==========
             
             logger.debug(f"[JWT] ✅ Token verified with {key_status} key")
             

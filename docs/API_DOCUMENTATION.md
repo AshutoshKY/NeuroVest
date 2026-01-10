@@ -650,4 +650,131 @@ def decrypt_field(encrypted_value: str, secret_key: str) -> str:
 
 ---
 
+
+---
+
+## 13. Admin Management
+**Base URL**: `/admin`
+
+### 13.1 User Management
+| Endpoint | Method | Role | Description |
+|----------|--------|------|-------------|
+| `/users` | GET | Admin | List all users (paginated) |
+| `/users/disable` | POST | Super Admin | Disable user account |
+| `/users/enable` | POST | Super Admin | Enable user account |
+
+**Disable User Payload**:
+```json
+{
+  "user_id": 123,
+  "reason": "Suspicious activity detected"
+}
+```
+
+### 13.2 IP Blacklist
+| Endpoint | Method | Role | Description |
+|----------|--------|------|-------------|
+| `/ip-blacklist` | GET | Admin | List blacklisted IPs |
+| `/ip-blacklist/add` | POST | Super Admin | Add IP to blacklist |
+| `/ip-blacklist/{ip}` | DELETE | Super Admin | Remove IP from blacklist |
+
+### 13.3 System Toggles
+| Endpoint | Method | Role | Description |
+|----------|--------|------|-------------|
+| `/system-toggles` | GET | Admin | Get all system toggle states |
+| `/system-toggles` | POST | Super Admin | Set system toggle state |
+
+**Valid Toggles**: `login_enabled`, `signup_enabled`, `guest_enabled`, `maintenance`
+
+### 13.4 Audit Logs
+| Endpoint | Method | Role | Description |
+|----------|--------|------|-------------|
+| `/audit-logs` | GET | Admin | View system audit logs |
+
+---
+
+## 14. Admin Traffic Analytics
+**Base URL**: `/admin/traffic`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/realtime` | GET | Active users (5m), requests (1h) |
+| `/hourly` | GET | Hourly breakdown (default 24h) |
+| `/daily` | GET | Daily aggregated traffic (30d) |
+| `/geo-distribution` | GET | Request distribution by country |
+| `/top-ips` | GET | Most active IP addresses |
+| `/popular-stocks` | GET | Most analyzed tickers |
+
+---
+
+## 15. Admin Kill Switches
+**Base URL**: `/admin/killswitch`
+
+**Warning**: Activation requires typing a confirmation code specific to the switch.
+
+| Endpoint | Method | Role | Description |
+|----------|--------|------|-------------|
+| `/status` | GET | Admin | View all kill switch statuses |
+| `/activate` | POST | Super Admin | Activate a kill switch |
+| `/deactivate` | POST | Super Admin | Deactivate a kill switch |
+
+**Kill Switch Types**:
+- `emergency_shutdown`: Stops all non-admin access
+- `pause_ai_service`: Disables all AI features
+- `pause_trading_api`: Disables external data calls
+- `block_new_registrations`: Stops signups
+
+---
+
+## 16. Admin AI Metrics
+**Base URL**: `/admin/ai`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/summary` | GET | Today's total tokens, requests, cost |
+| `/hourly` | GET | Hourly usage breakdown |
+| `/requests` | GET | Recent AI request log |
+| `/guardrails` | GET | Safety guardrail rejection stats |
+| `/cost-breakdown` | GET | Daily cost trends |
+| `/overview` | GET | Comprehensive AI metrics dashboard |
+
+---
+
+## 17. Admin Dashboard
+**Base URL**: `/admin/dashboard`
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/overview` | GET | Full dashboard state (Infra + Traffic + AI + Risk) |
+| `/quick-stats` | GET | Minimal KPI stats for header cards |
+| `/alerts` | GET | Active system alerts and critical warnings |
+
+---
+
+## 18. Smart Orchestrator Admin
+**Base URL**: `/admin/smartorchestrator`
+
+**Purpose**: Manage the multi-tier API aggregation system, circuit breakers, and caches.
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health status of all connected stock APIs |
+| `/health/{api}/{market}` | GET | Detailed stats for specific provider |
+| `/circuit-breaker/reset` | POST | Reset circuit breaker for an API |
+| `/cache/stats` | GET | View hit/miss rates for Memory/Redis/Stale tiers |
+| `/cache/clear` | POST | ⚠️ Clear all cache tiers (Force fresh data) |
+| `/stats` | GET | Comprehensive orchestrator performance metrics |
+| `/config` | GET | View current timeout and specific strategy settings |
+
+**Circuit Breaker Reset Payload**:
+```json
+{
+  "api_name": "finnhub",
+  "market": "US"
+}
+```
+
+---
+
 *Continued in Part 2: API Categories (Detailed), Error Handling, and Architecture Diagrams*
+

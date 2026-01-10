@@ -9,7 +9,12 @@
 import axios, { AxiosInstance, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 import CryptoJS from 'crypto-js';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Detect if running on server (SSR) vs client
+// Server-side needs Docker internal network URL, client-side needs localhost
+const isServer = typeof window === 'undefined';
+const API_BASE_URL = isServer
+    ? (process.env.API_INTERNAL_URL || 'http://backend:8000')  // Docker internal URL for SSR
+    : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000');  // Browser URL
 
 class APIClient {
     private client: AxiosInstance;

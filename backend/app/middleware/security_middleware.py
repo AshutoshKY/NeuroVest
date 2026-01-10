@@ -1,5 +1,5 @@
 """
-Security Middleware for IP Blacklist and System Toggles
+Security Middleware for IP Blacklist, Kill Switches, and System Toggles
 Enforces security controls on ALL requests before they reach endpoints
 """
 
@@ -16,9 +16,10 @@ from app.core.redis_client import get_redis
 class SecurityMiddleware(BaseHTTPMiddleware):
     """
     Middleware to enforce:
-    1. IP blacklist (403 for blocked IPs)
-    2. System toggles (login_enabled, signup_enabled, guest_enabled, maintenance_mode)
-    3. DDOS protection (100 req/min per IP)
+    1. Kill switches (emergency shutdown, block signups/logins)
+    2. IP blacklist (403 for blocked IPs)
+    3. System toggles (login_enabled, signup_enabled, guest_enabled, maintenance_mode)
+    4. DDOS protection (100 req/min per IP)
     """
     
     # Whitelist paths that should NOT be blocked (health checks, etc.)
@@ -43,6 +44,54 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         # Skip whitelist paths
         if any(path.startswith(wp) for wp in self.WHITELIST_PATHS):
             return await call_next(request)
+        
+        # ========== KILL SWITCH CHECK (Phase 3) ==========
+        # Check kill switches first - highest priority security control
+        try:
+            from app.services.kill_switch import (
+                is_switch_active, should_bypass_kill_switch, KillSwitchType
+            )
+            
+            # Admin paths bypass kill switches (for incident response)
+            if not should_bypass_kill_switch(path):
+                # Check emergency shutdown (blocks ALL traffic)
+                if is_switch_active(KillSwitchType.EMERGENCY_SHUTDOWN):
+                    logger.warning(f"[KILL_SWITCH] Emergency shutdown: blocking {client_ip} -> {path}")
+                    return JSONResponse(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content={"detail": "System is in emergency shutdown mode. All services are temporarily unavailable."}
+                    )
+                
+                # Check block_signups (for signup endpoints only)
+                if is_switch_active(KillSwitchType.BLOCK_SIGNUPS) and path.startswith("/auth/register"):
+                    logger.warning(f"[KILL_SWITCH] Signups blocked: {client_ip}")
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={"detail": "New registrations are temporarily disabled."}
+                    )
+                
+                # Check block_logins (for login endpoints only)
+                if is_switch_active(KillSwitchType.BLOCK_LOGINS) and path.startswith("/auth/login"):
+                    logger.warning(f"[KILL_SWITCH] Logins blocked: {client_ip}")
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={"detail": "Login is temporarily disabled."}
+                    )
+                
+                # Check maintenance mode (via kill switch)
+                if is_switch_active(KillSwitchType.MAINTENANCE_MODE):
+                    # Allow authenticated admin requests
+                    is_admin = await self._is_user_admin(request)
+                    if not is_admin:
+                        logger.info(f"[KILL_SWITCH] Maintenance mode: blocking {client_ip}")
+                        return JSONResponse(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            content={"detail": "System is under maintenance. Please try again later."}
+                        )
+        except Exception as e:
+            logger.error(f"[SECURITY] Kill switch check failed: {e}")
+            # Fail open - don't block if kill switch check fails
+        # ========== END KILL SWITCH CHECK ==========
         
         # 1. Check IP Blacklist
         try:

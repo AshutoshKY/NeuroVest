@@ -117,6 +117,16 @@ async def lifespan(app: FastAPI):
     
     logger.info("=" * 80)
     logger.info("✅ Application startup complete - Ready to serve requests")
+    
+    # Sync auth_epoch from MySQL to Redis (for JWT invalidation)
+    try:
+        from app.services.session_control import sync_auth_epoch_from_mysql
+        logger.info("🔐 Syncing auth_epoch from MySQL to Redis...")
+        epoch = sync_auth_epoch_from_mysql()
+        logger.info(f"✅ Auth epoch synced: {epoch}")
+    except Exception as e:
+        logger.error(f"❌ Failed to sync auth_epoch: {e}")
+    
     logger.info("=" * 80)
     
     yield
@@ -153,6 +163,12 @@ app.add_middleware(RequestIDMiddleware)
 from app.middleware.rate_limit_middleware import APIRateLimitMiddleware
 app.add_middleware(APIRateLimitMiddleware)
 logger.info("✅ API rate limiting middleware enabled (with auth exemptions)")
+
+# Add Metrics middleware (Phase 4: Observability)
+# Records request latency, status, and errors for admin dashboard
+from app.middleware.metrics_middleware import MetricsMiddleware
+app.add_middleware(MetricsMiddleware)
+logger.info("✅ Metrics middleware enabled")
 
 # Add Security middleware (IP blacklist, system toggles, DDOS protection)
 # This runs FIRST (before rate limiting) to avoid wasting counters on blocked IPs
@@ -204,7 +220,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 from app.api import (
     auth, health, stocks, sentiment, news, admin, tracking, user, user_stocks,
-    admin_management, admin_health, admin_traffic, admin_history, admin_cache, device, security, admin_orchestrator
+    admin_management, admin_health, admin_traffic, admin_history, admin_cache, device, security, admin_orchestrator,
+    admin_session, admin_killswitch, admin_metrics, admin_ai, admin_dashboard  # Phase 2/3/4/5/6
 )
 from app.api.routes import signal  # Signal Engine router
 
@@ -231,6 +248,11 @@ app.include_router(admin_traffic.router)
 app.include_router(admin_history.router)
 app.include_router(admin_cache.router)
 app.include_router(admin_orchestrator.router)  # Smart Orchestrator Admin
+app.include_router(admin_session.router)  # Phase 2: Session Control (force logout)
+app.include_router(admin_killswitch.router)  # Phase 3: Kill Switches
+app.include_router(admin_metrics.router)  # Phase 4: Metrics & Observability
+app.include_router(admin_ai.router)  # Phase 5: AI/RAG Cost Tracking
+app.include_router(admin_dashboard.router)  # Phase 6: Unified Dashboard API
 
 # WebSocket endpoint for real-time analysis
 from app.api.stocks_websocket import websocket_endpoint

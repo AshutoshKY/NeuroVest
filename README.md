@@ -16,6 +16,7 @@ NeuroVest is a comprehensive stock market analysis platform designed specificall
 - **Technical Indicators**: RSI, MACD, Bollinger Bands, Moving Averages
 - **Historical Context**: ChromaDB vector database with temporal decay algorithm
 - **User Dashboard**: Beautiful UI with real-time updates and portfolio tracking
+- **Admin Command Center**: Unified interface for system monitoring, user management, and security controls
 
 ---
 
@@ -65,9 +66,9 @@ We recently completed a **comprehensive performance optimization** that improved
 │  └──────────────────────────────────────────────────┘   │
 │  ┌──────────────────────────────────────────────────┐   │
 │  │  Data Services                                   │   │
+│  │  - Smart API Orchestrator (Multi-Provider)       │   │
+│  │  - Circuit Breakers & Multi-Tier Caching         │   │
 │  │  - Technical Analysis (RSI, MACD, etc.)          │   │
-│  │  - Stock API Service (yfinance, yahooquery)      │   │
-│  │  - News Aggregation (RSS + Web Scraping)         │   │
 │  └──────────────────────────────────────────────────┘   │
 └────────────────┬─────────────┬──────────────────────────┘
                  │             │
@@ -215,6 +216,8 @@ RSS_FEEDS = {
 
 ## 📚 Documentation
 
+- **[Admin Guide](./docs/ADMIN_GUIDE.md)**: complete manual for the Admin Command Center
+- **[API Documentation](./docs/API_DOCUMENTATION.md)**: full API reference including new Admin endpoints
 - **[Optimization Guide](./brain/OPTIMIZATION_README.md)**: Comprehensive documentation of performance improvements
 - **[Docker Test Results](./brain/docker_test_results.md)**: Validation test results
 - **[Walkthrough](./brain/walkthrough.md)**: Implementation details and testing

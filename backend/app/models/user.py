@@ -8,9 +8,15 @@ from app.core.database import Base
 
 
 class UserRole(str, enum.Enum):
-    """User role enumeration"""
+    """
+    User role enumeration.
+    - USER: Regular user with standard access
+    - ADMIN: Read-only monitoring access (can view admin dashboard, cannot mutate)
+    - SUPER_ADMIN: Full admin access including dangerous operations (kill switches, force logout)
+    """
     USER = "user"  # lowercase to match MySQL enum
     ADMIN = "admin"  # lowercase to match MySQL enum
+    SUPER_ADMIN = "super_admin"  # New role for dangerous operations
 
 
 class User(Base):
@@ -25,7 +31,7 @@ class User(Base):
     
     # Authentication & Authorization
     # Using String instead of SQLEnum to avoid MySQL enum type conflicts
-    role = Column(String(10), default=UserRole.USER.value, nullable=False, index=True)
+    role = Column(String(15), default=UserRole.USER.value, nullable=False, index=True)  # Increased for 'super_admin'
     is_verified = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     
@@ -52,8 +58,13 @@ class User(Base):
     
     @property
     def is_admin(self) -> bool:
-        """Check if user has admin role"""
-        return self.role == UserRole.ADMIN
+        """Check if user has admin or super_admin role (can view admin dashboard)"""
+        return self.role in (UserRole.ADMIN.value, UserRole.SUPER_ADMIN.value, "admin", "super_admin")
+    
+    @property
+    def is_super_admin(self) -> bool:
+        """Check if user has super_admin role (can perform dangerous operations)"""
+        return self.role in (UserRole.SUPER_ADMIN.value, "super_admin")
     
     @property
     def is_locked(self) -> bool:
