@@ -70,10 +70,9 @@ class AESDecryptor:
         Derive key and IV using MD5 (OpenSSL EVP_BytesToKey compatible)
         This matches CryptoJS behavior
         """
-        import hashlib
         d = d_i = b''
         while len(d) < key_length + iv_length:
-            d_i = hashlib.md5(d_i + password + salt).digest()  # nosec B324
+            d_i = hashlib.md5(d_i + password + salt).digest()  # nosec
             d += d_i
         return d[:key_length + iv_length]
     
