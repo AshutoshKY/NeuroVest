@@ -1,20 +1,13 @@
-import pytest
-from app.utils.aes_decryption import decrypt_data, AES
-import base64
-import json
+from app.utils.aes_decryption import AESDecryptor
+from unittest.mock import MagicMock
 
-# Note: We need a valid AES test key/iv logic. 
-# Assuming the Util class handles standard AES CBC/GCM
+def test_aes_decryptor_init():
+    """Test initialization"""
+    decryptor = AESDecryptor("secret_key")
+    assert decryptor.secret_key == "secret_key"
 
-def test_aes_decryption_mocked():
-    """
-    Since AES depends on Crypto library, we test if the function exists
-    and handles bad input correctly. Real encryption tests require matching keys.
-    """
-    # Test valid structure handling
-    try:
-        # Pass garbage
-        decrypt_data("invalid_encrypted_string", "secret")
-        assert False, "Should raise error"
-    except Exception:
-        assert True
+def test_decrypt_fail_on_garbage():
+    """Test safe handling of invalid input"""
+    decryptor = AESDecryptor("secret_key")
+    result = decryptor.decrypt_field("invalid_base64_string")
+    assert result is None
