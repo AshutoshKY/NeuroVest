@@ -28,4 +28,4 @@ jobs:
         # Scans backend code for security issues (weak crypto, exec calls, etc.)
         # -r: recursive
         # -ll: log level (report only medium/high confidence)
-        run: bandit -r backend/app -ll
+        run: bandit -r backend/app -ll -c bandit.yaml
