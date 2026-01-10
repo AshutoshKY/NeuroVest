@@ -18,4 +18,4 @@ jobs:
 
     - name: Build Services
       # Builds backend and frontend images using compose to ensure Dockerfiles are valid
-      run: docker-compose build
+      run: docker compose build
