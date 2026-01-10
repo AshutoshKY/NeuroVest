@@ -46,7 +46,7 @@ jobs:
         python -m pip install --upgrade pip
         # Optimization: Install CPU-only PyTorch (saves ~3GB)
         pip install --no-cache-dir torch --index-url https://download.pytorch.org/whl/cpu
-        pip install ruff pytest httpx
+        pip install ruff pytest pytest-cov httpx
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         # Fix: Direct install of spacy model to avoid CLI 404s
         pip install https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
@@ -79,6 +79,14 @@ jobs:
         # This script handles its own unit and integration tests
         python test_backend_comprehensive.py
 
-        # Run Standard Integration Tests (Pytest)
+        # Run Standard Integration Tests (Pytest) with Coverage
         echo "Running Integration Tests..."
-        pytest tests/test_flow_integration.py -v
+        pytest tests/test_flow_integration.py -v --cov=app --cov-report=xml
+
+    - name: Upload coverage to Codecov
+      uses: codecov/codecov-action@v4
+      with:
+        token: ${{ secrets.CODECOV_TOKEN }}
+        file: ./backend/coverage.xml
+        flags: backend
+        fail_ci_if_error: false
