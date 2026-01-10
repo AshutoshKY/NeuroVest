@@ -78,3 +78,7 @@ jobs:
         # Run the comprehensive test script
         # This script handles its own unit and integration tests
         python test_backend_comprehensive.py
+
+        # Run Standard Integration Tests (Pytest)
+        echo "Running Integration Tests..."
+        pytest tests/test_flow_integration.py -v

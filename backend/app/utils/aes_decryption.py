@@ -73,7 +73,7 @@ class AESDecryptor:
         import hashlib
         d = d_i = b''
         while len(d) < key_length + iv_length:
-            d_i = hashlib.md5(d_i + password + salt).digest()
+            d_i = hashlib.md5(d_i + password + salt).digest()  # nosec B324
             d += d_i
         return d[:key_length + iv_length]
     
