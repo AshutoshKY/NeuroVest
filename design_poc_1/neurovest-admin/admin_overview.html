@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest Command - Overview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>
+        tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['JetBrains Mono', 'monospace'] }, colors: { bg: '#020617', surface: '#0f172a', border: '#1e293b', primary: '#6366f1', success: '#10b981', danger: '#ef4444', warning: '#f59e0b', info: '#3b82f6' } } } }
+    </script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .nav-link.active {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid #6366f1;
+            color: white;
+        }
+
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+
+        .glass {
+            background: rgba(15, 23, 42, 0.6);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm font-sans">
+
+    <!-- SHARED SIDEBAR -->
+    <aside class="w-64 bg-surface border-r border-border flex flex-col shrink-0 z-50">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-border">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold">N</div>
+            <div class="font-bold text-white tracking-tight">NEUROVEST <span
+                    class="text-[10px] text-primary block font-normal">Command Center</span></div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 mb-2">Platform</div>
+            <a href="admin_overview.html"
+                class="nav-link active flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition">Overview</a>
+            <a href="admin_infrastructure.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition">Infrastructure
+                (DB/Redis)</a>
+            <a href="admin_ai_rag.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition">AI
+                & RAG Engine</a>
+            <a href="admin_api_health.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition">External
+                APIs</a>
+
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Operations</div>
+            <a href="admin_users.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition">User
+                Intelligence</a>
+            <a href="admin_security.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white hover:bg-white/5 transition">Security
+                & Audit</a>
+            <a href="admin_controls.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-danger hover:text-red-400 hover:bg-red-500/10 transition font-bold">Kill
+                Switches & Config</a>
+        </nav>
+    </aside>
+
+    <!-- MAIN CONTENT -->
+    <main class="flex-1 flex flex-col relative overflow-hidden">
+        <header class="h-16 flex items-center justify-between px-8 border-b border-border bg-bg/95 backdrop-blur z-20">
+            <h1 class="text-xl font-bold text-white">System Overview</h1>
+            <div class="flex items-center gap-4">
+                <span
+                    class="flex items-center gap-2 px-3 py-1 rounded-full bg-success/10 border border-success/20 text-xs text-success font-mono"><span
+                        class="w-2 h-2 rounded-full bg-success animate-pulse"></span> ALL SYSTEMS NOMINAL</span>
+                <div class="text-right">
+                    <div class="text-xs text-slate-500">Uptime</div>
+                    <div class="text-sm font-mono text-white">99.99%</div>
+                </div>
+            </div>
+        </header>
+
+        <div class="flex-1 overflow-y-auto p-8 space-y-6">
+
+            <!-- KPI ROW -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="glass p-5 rounded-xl">
+                    <div class="text-slate-400 text-xs uppercase font-bold">Live Users</div>
+                    <div class="text-3xl font-mono text-white mt-1">14,209</div>
+                    <div class="text-xs text-success mt-2 flex items-center gap-1">▲ 12% vs 1h ago</div>
+                </div>
+                <div class="glass p-5 rounded-xl">
+                    <div class="text-slate-400 text-xs uppercase font-bold">RAG Accuracy</div>
+                    <div class="text-3xl font-mono text-white mt-1">94.2%</div>
+                    <div class="text-xs text-slate-500 mt-2">Last 24h average</div>
+                </div>
+                <div class="glass p-5 rounded-xl">
+                    <div class="text-slate-400 text-xs uppercase font-bold">API Latency (Global)</div>
+                    <div class="text-3xl font-mono text-white mt-1">142ms</div>
+                    <div class="w-full bg-slate-800 h-1 mt-3 rounded overflow-hidden">
+                        <div class="bg-success h-full w-[40%]"></div>
+                    </div>
+                </div>
+                <div class="glass p-5 rounded-xl border-warning/30">
+                    <div class="text-slate-400 text-xs uppercase font-bold">Token Burn Rate</div>
+                    <div class="text-3xl font-mono text-warning mt-1">$42/hr</div>
+                    <div class="text-xs text-warning mt-2">Approaching hourly limit ($50)</div>
+                </div>
+            </div>
+
+            <!-- CHARTS ROW 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <div class="lg:col-span-2 glass p-6 rounded-xl">
+                    <div class="flex justify-between mb-4">
+                        <h3 class="text-white font-bold">Traffic vs Error Rate</h3>
+                        <span class="text-xs text-slate-500 font-mono">LIVE FEED</span>
+                    </div>
+                    <div id="chart-traffic" class="w-full h-80"></div>
+                </div>
+                <div class="glass p-6 rounded-xl flex flex-col">
+                    <h3 class="text-white font-bold mb-4">Infrastructure Health Score</h3>
+                    <div class="flex-1 flex items-center justify-center">
+                        <div id="chart-health-radar" class="w-full"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CRITICAL ALERTS TABLE -->
+            <div class="glass rounded-xl overflow-hidden">
+                <div class="p-4 border-b border-border bg-surface/50 flex justify-between">
+                    <h3 class="font-bold text-white">Active System Alerts</h3>
+                    <button class="text-xs text-primary hover:text-white">View Incident Log</button>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-surface text-slate-500 uppercase">
+                        <tr>
+                            <th class="p-4">Severity</th>
+                            <th class="p-4">Component</th>
+                            <th class="p-4">Message</th>
+                            <th class="p-4">Time</th>
+                            <th class="p-4 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-300 divide-y divide-border">
+                        <tr class="bg-warning/5">
+                            <td class="p-4"><span
+                                    class="bg-warning/10 text-warning px-2 py-1 rounded border border-warning/20">WARNING</span>
+                            </td>
+                            <td class="p-4 font-mono">OpenAI_Gateway</td>
+                            <td class="p-4">Token usage spiked 200% in region us-east-1</td>
+                            <td class="p-4 font-mono">2m ago</td>
+                            <td class="p-4 text-right"><button
+                                    class="text-slate-400 hover:text-white underline">Investigate</button></td>
+                        </tr>
+                        <tr>
+                            <td class="p-4"><span
+                                    class="bg-info/10 text-info px-2 py-1 rounded border border-info/20">INFO</span>
+                            </td>
+                            <td class="p-4 font-mono">ChromaDB_Indexer</td>
+                            <td class="p-4">Auto-scaling event triggered. Rebalancing shards.</td>
+                            <td class="p-4 font-mono">15m ago</td>
+                            <td class="p-4 text-right"><button
+                                    class="text-slate-400 hover:text-white underline">Details</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const common = { chart: { toolbar: { show: false }, background: 'transparent', foreColor: '#94a3b8' }, theme: { mode: 'dark' }, grid: { borderColor: '#1e293b' } };
+
+        // Traffic Chart
+        new ApexCharts(document.querySelector("#chart-traffic"), {
+            ...common,
+            series: [{ name: 'Requests (RPS)', type: 'area', data: [4500, 5200, 4800, 6100, 5500, 7200, 6800, 8100] }, { name: 'Errors (5xx)', type: 'bar', data: [20, 15, 30, 25, 40, 35, 20, 10] }],
+            chart: { height: 320, type: 'line', background: 'transparent' },
+            colors: ['#6366f1', '#ef4444'],
+            fill: { type: ['gradient', 'solid'], gradient: { opacityFrom: 0.4, opacityTo: 0.1 } },
+            stroke: { curve: 'smooth', width: [2, 0] },
+            yaxis: [{ title: { text: 'RPS' } }, { opposite: true, title: { text: 'Errors' } }]
+        }).render();
+
+        // Health Radar
+        new ApexCharts(document.querySelector("#chart-health-radar"), {
+            ...common,
+            series: [{ name: 'Health', data: [98, 85, 100, 92, 88, 95] }],
+            chart: { height: 300, type: 'radar' },
+            labels: ['MySQL', 'Redis', 'ChromaDB', 'Stock API', 'News API', 'LLM'],
+            colors: ['#10b981'],
+            fill: { opacity: 0.2 },
+            markers: { size: 4 }
+        }).render();
+    </script>
+</body>
+
+</html>
