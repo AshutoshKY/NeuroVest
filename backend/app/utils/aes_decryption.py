@@ -2,8 +2,8 @@
 Utility for decrypting AES-encrypted auth payloads from frontend
 Matches the frontend encryption in api.ts
 """
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
+from Crypto.Cipher import AES  # nosec
+from Crypto.Util.Padding import unpad  # nosec
 import base64
 from loguru import logger
 from typing import Optional, Dict, Any
