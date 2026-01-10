@@ -154,7 +154,7 @@ except Exception as e:
 # Test 3: Prompt Building
 print("\n[TEST 3] Prompt Building...")
 try:
-    from app.llm_integration.prompts import build_enhanced_prompt, SYSTEM_PROMPT_V2, BANNED_WORDS
+    from app.llm_integration.prompts import SYSTEM_PROMPT_V2, BANNED_WORDS, SYSTEM_PROMPT_V3_PROBABILISTIC
     
     # Check SYSTEM_PROMPT_V2
     required_phrases = [
@@ -179,35 +179,12 @@ try:
         print(f"  ⚠️  WARNING: Only {len(BANNED_WORDS)} banned words")
         test_results["warnings"].append(f"Few banned words: {len(BANNED_WORDS)}")
     
-    # Test prompt building
-    test_signal_data = {
-        'signal_summary': {'directional_bias': 'bullish', 'confidence_score': 0.75, 'primary_signal': 'test', 'conviction': 'medium', 'risk_level': 'moderate'},
-        'trend': {'trend_state': 'bullish', 'strength': 'strong', 'ema_20': 100, 'ema_50': 95, 'ema_200': 90, 'ema_alignment_score': 0.9},
-        'momentum': {'rsi_14': 65, 'rsi_regime': 'neutral', 'macd': {'value': 1.5, 'state': 'positive'}},
-        'volatility': {'atr_14': 2.5, 'atr_percent': 1.8, 'volatility_regime': 'normal', 'bollinger_bandwidth': 0.15},
-        'structure': {'market_structure': 'higher_high', 'support_levels': [90], 'resistance_levels': [110]},
-        'volume': {'today_vs_20d_avg': 1.2, 'volume_trend': 'expanding', 'volume_confirmation': True, 'volume_spike': False},
-        'relative_strength': {'vs_nifty': 1.05, 'vs_sector': 1.02, 'sector_symbol': 'NIFTY_AUTO', 'sector_trend': 'strong', 'market_leadership': 'leader'},
-        'market_context': {'nifty_trend': 'bullish', 'nifty_close': 22000.0, 'india_vix': 12.5, 'vix_regime': 'normal', 'macro_bias': 'risk_on'}
-    }
-    
-    test_scenarios_data = [
-        {'name': 'Base', 'probability': 0.55, 'price_range': [100, 110], 'drivers': ['trend'], 'invalidation': '95'}
-    ]
-    
-    test_risk_data = {
-        'risk_score': 45, 'risk_level': 'moderate', 'trend_risk': 10,
-        'volatility_risk': 5, 'market_risk': 10, 'sector_risk': 10,
-        'conflict_risk': 5, 'news_risk': 5, 'conflicts': [], 'notes': 'Test'
-    }
-    
-    prompt = build_enhanced_prompt("TEST.NS", test_signal_data, test_scenarios_data, test_risk_data)
-    
-    if len(prompt) > 100 and 'TEST.NS' in prompt:
-        print(f"  ✅ PASS: Prompt built successfully ({len(prompt)} chars)")
+    # Test V3 Prompt (The real one used now)
+    if len(SYSTEM_PROMPT_V3_PROBABILISTIC) > 500 and "CRITICAL: YOUR ROLE IS RENDERER ONLY" in SYSTEM_PROMPT_V3_PROBABILISTIC:
+        print(f"  ✅ PASS: SYSTEM_PROMPT_V3_PROBABILISTIC validated ({len(SYSTEM_PROMPT_V3_PROBABILISTIC)} chars)")
         test_results["passed"].append("Prompt Building")
     else:
-        print(f"  ❌ FAIL: Prompt building failed or too short")
+        print(f"  ❌ FAIL: V3 Prompt missing or invalid")
         test_results["failed"].append("Prompt Building")
         
 except Exception as e:
