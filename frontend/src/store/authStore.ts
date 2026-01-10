@@ -11,7 +11,7 @@ interface User {
     email: string;
     full_name: string;
     display_name?: string;
-    role: 'user' | 'admin';
+    role: 'user' | 'admin' | 'super_admin';
     is_verified: boolean;
     created_at: string;
 }
