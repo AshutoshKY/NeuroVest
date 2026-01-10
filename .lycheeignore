@@ -1,0 +1,11 @@
+# Localhost and private IPs
+http://localhost.*
+https://localhost.*
+http://127.0.0.1.*
+
+# Example domains often used in docs
+http://example.com
+https://example.com
+
+# Brain directory (if not present in repo)
+brain/.*
