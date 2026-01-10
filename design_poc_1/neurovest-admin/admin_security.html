@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - Security Ops</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { bg: '#020617', surface: '#0f172a', border: '#1e293b', primary: '#6366f1', success: '#10b981', danger: '#ef4444' } } } }</script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .nav-link.active {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid #6366f1;
+            color: white;
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm font-sans">
+
+    <!-- SIDEBAR (Same) -->
+    <aside class="w-64 bg-surface border-r border-border flex flex-col shrink-0 z-50">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-border">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold">N</div>
+            <div class="font-bold text-white tracking-tight">NeuroVest</div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 mb-2">Platform</div>
+            <a href="admin_overview.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Overview</a>
+            <a href="admin_infrastructure.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Infrastructure</a>
+            <a href="admin_ai_rag.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">AI & RAG
+                Engine</a>
+            <a href="admin_api_health.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">External
+                APIs</a>
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Operations</div>
+            <a href="admin_users.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">User
+                Intelligence</a>
+            <a href="admin_security.html"
+                class="nav-link active flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Security
+                & Audit</a>
+            <a href="admin_controls.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-danger font-bold mt-auto">Kill Switches</a>
+        </nav>
+    </aside>
+
+    <main class="flex-1 flex flex-col overflow-y-auto bg-bg">
+        <header
+            class="h-16 px-8 border-b border-border flex items-center justify-between bg-surface/50 backdrop-blur sticky top-0 z-20">
+            <h1 class="text-xl font-bold text-white">Security Operations Center (SOC)</h1>
+            <button
+                class="bg-danger hover:bg-red-600 text-white px-4 py-2 rounded-lg text-xs font-bold shadow-lg shadow-red-900/20">Active
+                Threats: 2</button>
+        </header>
+
+        <div class="p-8 space-y-8">
+
+            <!-- THREAT LANDSCAPE -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <div class="bg-surface border border-border p-6 rounded-xl">
+                    <h3 class="font-bold text-white mb-4">Attack Vectors (24h)</h3>
+                    <div id="chart-attacks" class="w-full h-64"></div>
+                </div>
+                <div class="bg-surface border border-border p-6 rounded-xl">
+                    <h3 class="font-bold text-white mb-4">WAF Blocked Requests</h3>
+                    <div id="chart-waf" class="w-full h-64"></div>
+                </div>
+            </div>
+
+            <!-- AUDIT & ADMINS -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <!-- Audit Log -->
+                <div class="lg:col-span-2 bg-surface border border-border rounded-xl p-6">
+                    <h3 class="font-bold text-white mb-4">Live Audit Log</h3>
+                    <div
+                        class="font-mono text-xs space-y-2 h-64 overflow-y-auto bg-black p-4 rounded border border-border">
+                        <div class="flex gap-4"><span class="text-slate-500">[10:42:01]</span> <span
+                                class="text-primary">admin_sarah</span> <span class="text-slate-300">banned IP</span>
+                            <span class="text-danger">192.168.43.21</span></div>
+                        <div class="flex gap-4"><span class="text-slate-500">[10:40:15]</span> <span
+                                class="text-purple-400">system</span> <span class="text-slate-300">rotated API keys
+                                for</span> <span class="text-white">Service:SendGrid</span></div>
+                        <div class="flex gap-4"><span class="text-slate-500">[10:38:22]</span> <span
+                                class="text-primary">super_admin</span> <span class="text-slate-300">exported
+                                user_data.csv</span></div>
+                        <div class="flex gap-4"><span class="text-slate-500">[10:15:00]</span> <span
+                                class="text-primary">support_lead</span> <span class="text-slate-300">reset password for
+                                user</span> <span class="text-white">id:9921</span></div>
+                        <div class="flex gap-4"><span class="text-slate-500">[09:55:12]</span> <span
+                                class="text-danger">WAF</span> <span class="text-slate-300">blocked SQLi pattern
+                                from</span> <span class="text-white">45.12.99.10</span></div>
+                    </div>
+                </div>
+
+                <!-- Admin Team -->
+                <div class="bg-surface border border-border rounded-xl p-6">
+                    <h3 class="font-bold text-white mb-4">Admin Access</h3>
+                    <ul class="space-y-4">
+                        <li class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white font-bold">
+                                    JD</div>
+                                <div>
+                                    <div class="text-white text-xs font-bold">John Doe</div>
+                                    <div class="text-[10px] text-slate-500">Super Admin</div>
+                                </div>
+                            </div>
+                            <span class="w-2 h-2 rounded-full bg-success"></span>
+                        </li>
+                        <li class="flex items-center justify-between">
+                            <div class="flex items-center gap-3">
+                                <div
+                                    class="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center text-white font-bold">
+                                    AS</div>
+                                <div>
+                                    <div class="text-white text-xs font-bold">Alice Smith</div>
+                                    <div class="text-[10px] text-slate-500">Support Lead</div>
+                                </div>
+                            </div>
+                            <span class="w-2 h-2 rounded-full bg-slate-500"></span>
+                        </li>
+                    </ul>
+                    <button
+                        class="w-full mt-6 py-2 border border-border rounded text-xs hover:bg-white/5 text-slate-400 hover:text-white">Manage
+                        Roles</button>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const common = { chart: { toolbar: { show: false }, background: 'transparent', foreColor: '#94a3b8' }, theme: { mode: 'dark' }, grid: { borderColor: '#1e293b' } };
+
+        new ApexCharts(document.querySelector("#chart-attacks"), {
+            ...common,
+            series: [{ name: 'Attempts', data: [12, 18, 5, 45, 8, 15, 10] }],
+            chart: { type: 'bar', height: 250 },
+            colors: ['#ef4444'],
+            xaxis: { categories: ['SQLi', 'XSS', 'Brute Force', 'DDoS', 'MitM', 'Phishing', 'Other'] }
+        }).render();
+
+        new ApexCharts(document.querySelector("#chart-waf"), {
+            ...common,
+            series: [{ name: 'Requests', data: [1200, 4500, 1100, 800, 950, 2000, 3100] }],
+            chart: { type: 'area', height: 250 },
+            colors: ['#6366f1'],
+            fill: { type: 'gradient', gradient: { opacityFrom: 0.5, opacityTo: 0.1 } }
+        }).render();
+    </script>
+</body>
+
+</html>

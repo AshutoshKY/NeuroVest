@@ -723,10 +723,44 @@ class RAGService:
             # ENHANCED POST-PROCESSOR: Parse structured LLM response + Enrich
             # ==================================================================
             
-            # Step 1: Parse nested LLM response (backward compatible)
-            # Handle both old flat and new structured formats
+            # Step 1: Parse LLM response - PRESERVE existing analysis_structured if present
+            # _generate_llm_response already builds analysis_structured for V3 format!
+            
+            # Check if analysis_structured already exists (built by _generate_llm_response)
+            existing_analysis_structured = None
+            existing_prediction_structured = None
+            
             if isinstance(analysis, dict):
-                # New structured format
+                existing_analysis_structured = analysis.get("analysis_structured")
+                existing_prediction_structured = analysis.get("prediction_structured")
+            
+            if existing_analysis_structured and isinstance(existing_analysis_structured, dict):
+                # V3 FORMAT: Use pre-built structured data from _generate_llm_response
+                # Use safe_extract helpers to ensures types (especially for key_points which can come as dict)
+                analysis_summary = safe_extract(existing_analysis_structured, "summary", "")
+                analysis_text = safe_extract(existing_analysis_structured, "full_text", analysis.get("analysis", ""))
+                analysis_points = safe_extract_list(existing_analysis_structured, "key_points", [])
+                
+                if existing_prediction_structured and isinstance(existing_prediction_structured, dict):
+                    prediction_summary = safe_extract(existing_prediction_structured, "summary", "")
+                    prediction_text = safe_extract(existing_prediction_structured, "outlook", analysis.get("prediction", ""))
+                    scenarios = existing_prediction_structured.get("scenarios", [])
+                    # Note: No separate key_points for prediction in this path yet, but logic is consistent
+                else:
+                    prediction_summary = ""
+                    prediction_text = str(analysis.get("prediction", ""))
+                    scenarios = {}
+                    
+                logger.info(f"✅ Using pre-built analysis_structured from LLM response", extra={
+                    "operation": "use_existing_structured",
+                    "ticker": ticker,
+                    "summary_length": len(analysis_summary),
+                    "key_points_is_list": isinstance(analysis_points, list),
+                    "key_points_count": len(analysis_points),
+                    "has_prediction_structured": bool(existing_prediction_structured)
+                })
+            elif isinstance(analysis, dict):
+                # LEGACY FORMAT: Try to parse nested structure (backward compatible)
                 analysis_obj = analysis.get("analysis", {})
                 if isinstance(analysis_obj, dict):
                     analysis_summary = analysis_obj.get("summary", "")

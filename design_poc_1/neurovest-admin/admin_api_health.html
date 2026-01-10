@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <title>NeuroVest - API Health</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap"
+        rel="stylesheet">
+    <script>tailwind.config = { darkMode: 'class', theme: { extend: { colors: { bg: '#020617', surface: '#0f172a', border: '#1e293b', primary: '#6366f1', success: '#10b981', danger: '#ef4444', warning: '#f59e0b' } } } }</script>
+    <style>
+        body {
+            background-color: #020617;
+            color: #94a3b8;
+        }
+
+        .nav-link.active {
+            background: rgba(99, 102, 241, 0.1);
+            border-left: 3px solid #6366f1;
+            color: white;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 6px;
+        }
+
+        .dot-green {
+            background-color: #10b981;
+            box-shadow: 0 0 8px rgba(16, 185, 129, 0.4);
+        }
+
+        .dot-red {
+            background-color: #ef4444;
+            box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
+        }
+    </style>
+</head>
+
+<body class="flex h-screen overflow-hidden text-sm font-sans">
+
+    <!-- SIDEBAR -->
+    <aside class="w-64 bg-surface border-r border-border flex flex-col shrink-0 z-50">
+        <div class="h-16 flex items-center gap-3 px-6 border-b border-border">
+            <div class="w-8 h-8 rounded bg-primary flex items-center justify-center text-white font-bold">N</div>
+            <div class="font-bold text-white tracking-tight">NeuroVest</div>
+        </div>
+        <nav class="flex-1 overflow-y-auto py-4 space-y-1">
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2 mb-2">Platform</div>
+            <a href="admin_overview.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Overview</a>
+            <a href="admin_infrastructure.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Infrastructure</a>
+            <a href="admin_ai_rag.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">AI & RAG
+                Engine</a>
+            <a href="admin_api_health.html"
+                class="nav-link active flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">External
+                APIs</a>
+            <div class="px-6 text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-6 mb-2">Operations</div>
+            <a href="admin_users.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">User
+                Intelligence</a>
+            <a href="admin_security.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-slate-400 hover:text-white transition">Security &
+                Audit</a>
+            <a href="admin_controls.html"
+                class="nav-link flex items-center gap-3 px-6 py-3 text-danger font-bold mt-auto">Kill Switches</a>
+        </nav>
+    </aside>
+
+    <!-- MAIN -->
+    <main class="flex-1 flex flex-col overflow-y-auto bg-bg">
+        <header
+            class="h-16 px-8 border-b border-border flex items-center justify-between bg-surface/50 backdrop-blur sticky top-0 z-20">
+            <h1 class="text-xl font-bold text-white">External API Gateway Status</h1>
+            <div class="flex gap-4 text-xs">
+                <div class="flex items-center gap-2"><span class="status-dot dot-green"></span> 5 Operational</div>
+                <div class="flex items-center gap-2"><span class="status-dot dot-red"></span> 1 Degraded</div>
+            </div>
+        </header>
+
+        <div class="p-8 space-y-8">
+
+            <!-- LATENCY GRID -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Alpha Vantage -->
+                <div class="bg-surface border border-border p-5 rounded-xl">
+                    <div class="flex justify-between mb-4">
+                        <div class="font-bold text-white flex items-center"><span class="status-dot dot-green"></span>
+                            Alpha Vantage</div>
+                        <span class="text-xs font-mono text-success bg-success/10 px-2 rounded">99.9% Up</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase">Latency</div>
+                            <div class="text-xl text-white font-mono">145ms</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase">Errors (1h)</div>
+                            <div class="text-xl text-white font-mono">0.01%</div>
+                        </div>
+                    </div>
+                    <div id="spark1" class="h-16"></div>
+                </div>
+
+                <!-- NSE Connect -->
+                <div class="bg-surface border border-border p-5 rounded-xl">
+                    <div class="flex justify-between mb-4">
+                        <div class="font-bold text-white flex items-center"><span class="status-dot dot-green"></span>
+                            NSE Connect</div>
+                        <span class="text-xs font-mono text-success bg-success/10 px-2 rounded">100% Up</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase">Latency</div>
+                            <div class="text-xl text-white font-mono">82ms</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase">Errors (1h)</div>
+                            <div class="text-xl text-white font-mono">0.00%</div>
+                        </div>
+                    </div>
+                    <div id="spark2" class="h-16"></div>
+                </div>
+
+                <!-- OpenAI -->
+                <div class="bg-surface border border-warning/50 p-5 rounded-xl">
+                    <div class="flex justify-between mb-4">
+                        <div class="font-bold text-white flex items-center"><span
+                                class="w-2 h-2 rounded-full bg-warning mr-2 animate-pulse"></span> OpenAI</div>
+                        <span class="text-xs font-mono text-warning bg-warning/10 px-2 rounded">Degraded</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase">Latency</div>
+                            <div class="text-xl text-warning font-mono">1.2s</div>
+                        </div>
+                        <div>
+                            <div class="text-[10px] text-slate-500 uppercase">Errors (1h)</div>
+                            <div class="text-xl text-warning font-mono">2.4%</div>
+                        </div>
+                    </div>
+                    <div id="spark3" class="h-16"></div>
+                </div>
+            </div>
+
+            <!-- DETAILED METRICS CHART -->
+            <div class="bg-surface border border-border p-6 rounded-xl">
+                <h3 class="font-bold text-white mb-6">Aggregate API Latency (p95)</h3>
+                <div id="chart-latency-main" class="w-full h-80"></div>
+            </div>
+
+            <!-- FAILURE LOGS -->
+            <div class="bg-surface border border-border rounded-xl overflow-hidden">
+                <div class="p-4 border-b border-border bg-surface flex justify-between">
+                    <h3 class="font-bold text-white">Recent API Failures</h3>
+                    <button class="text-xs text-primary hover:text-white">Download Logs</button>
+                </div>
+                <table class="w-full text-left text-xs">
+                    <thead class="bg-bg text-slate-500 uppercase">
+                        <tr>
+                            <th class="p-4">Service</th>
+                            <th class="p-4">Endpoint</th>
+                            <th class="p-4">Status Code</th>
+                            <th class="p-4">Latency</th>
+                            <th class="p-4">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody class="text-slate-300 divide-y divide-border">
+                        <tr class="bg-warning/5">
+                            <td class="p-4 font-bold text-white">OpenAI</td>
+                            <td class="p-4 font-mono">/v1/chat/completions</td>
+                            <td class="p-4 text-warning">503 Service Unavailable</td>
+                            <td class="p-4 font-mono">5002ms</td>
+                            <td class="p-4">2 mins ago</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-bold text-white">Finnhub</td>
+                            <td class="p-4 font-mono">/stock/candle</td>
+                            <td class="p-4 text-danger">429 Too Many Requests</td>
+                            <td class="p-4 font-mono">120ms</td>
+                            <td class="p-4">15 mins ago</td>
+                        </tr>
+                        <tr>
+                            <td class="p-4 font-bold text-white">Stripe</td>
+                            <td class="p-4 font-mono">/v1/charges</td>
+                            <td class="p-4 text-danger">402 Payment Required</td>
+                            <td class="p-4 font-mono">450ms</td>
+                            <td class="p-4">1 hour ago</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        const common = { chart: { type: 'area', sparkline: { enabled: true } }, stroke: { curve: 'smooth', width: 2 }, fill: { opacity: 0.2 }, tooltip: { fixed: { enabled: false }, x: { show: false }, y: { title: { formatter: () => '' } }, marker: { show: false } } };
+
+        new ApexCharts(document.querySelector("#spark1"), { ...common, series: [{ data: [45, 52, 38, 24, 33, 26, 21, 20, 6, 8, 15, 10] }], colors: ['#10b981'] }).render();
+        new ApexCharts(document.querySelector("#spark2"), { ...common, series: [{ data: [10, 15, 12, 18, 20, 15, 12, 10, 12, 15, 10, 12] }], colors: ['#10b981'] }).render();
+        new ApexCharts(document.querySelector("#spark3"), { ...common, series: [{ data: [120, 200, 150, 400, 800, 1200, 900, 1100, 1250] }], colors: ['#f59e0b'] }).render();
+
+        new ApexCharts(document.querySelector("#chart-latency-main"), {
+            series: [
+                { name: 'Stock Data', data: [120, 132, 101, 134, 190, 230, 210, 180] },
+                { name: 'AI Engine', data: [820, 932, 901, 934, 1290, 1330, 1320, 1100] },
+                { name: 'Database', data: [45, 52, 38, 24, 33, 26, 21, 20] }
+            ],
+            chart: { type: 'line', height: 320, toolbar: { show: false }, background: 'transparent' },
+            colors: ['#10b981', '#f59e0b', '#6366f1'],
+            stroke: { width: [2, 2, 2], curve: 'smooth' },
+            theme: { mode: 'dark' },
+            grid: { borderColor: '#1e293b' }
+        }).render();
+    </script>
+</body>
+
+</html>
