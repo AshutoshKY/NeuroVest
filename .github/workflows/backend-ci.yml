@@ -1,0 +1,71 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [ "main", "feature/*", "infra/*" ]
+    paths:
+      - 'backend/**'
+  pull_request:
+    branches: [ "main" ]
+    paths:
+      - 'backend/**'
+
+jobs:
+  test-and-lint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+
+    services:
+      # Service container for MySQL to allow tests to connect
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_root_password
+          MYSQL_DATABASE: stock_market_db_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+        cache: 'pip'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install ruff pytest httpx
+        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+    - name: Lint with Ruff
+      run: |
+        # Run ruff (fast linter)
+        # E501: Line too long (managed by formatter usually)
+        # F401: Unused imports (init files often have these)
+        ruff check . --ignore E501,F401,F841 || true 
+        # Note: '|| true' allows lint warnings without failing build initially. 
+        # Remove '|| true' strictly when ready to enforce.
+
+    - name: Run Tests
+      env:
+        # Secrets injected from GitHub Actions
+        AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+        AZURE_OPENAI_ENDPOINT: ${{ secrets.AZURE_OPENAI_ENDPOINT }}
+        AZURE_OPENAI_DEPLOYMENT: ${{ secrets.AZURE_OPENAI_DEPLOYMENT }}
+        AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+        # DB Config for Test Service
+        MYSQL_SERVER: 127.0.0.1
+        MYSQL_USER: root
+        MYSQL_PASSWORD: test_root_password
+        MYSQL_DB: stock_market_db_test
+        TESTING: "true"
+      run: |
+        # Running pytest
+        # Assuming tests are in 'tests' folder or standard discovery
+        pytest -v
