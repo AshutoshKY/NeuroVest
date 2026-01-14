@@ -44,8 +44,17 @@ class MetricsMiddleware(BaseHTTPMiddleware):
         # Calculate latency
         latency_ms = (time.time() - start_time) * 1000
         
-        # Get user ID from request state if available
-        user_id = getattr(request.state, "user_id", None)
+        # Get user ID from request state if available (auth middleware sets request.state.user)
+        # NOTE: Must handle DetachedInstanceError - user object may be detached from session after call_next()
+        user_id = None
+        try:
+            user = getattr(request.state, "user", None)
+            if user is not None:
+                # Access the id carefully - it may trigger a lazy load on a detached object
+                user_id = getattr(user, "id", None)
+        except Exception:
+            # Silently ignore - user tracking is best-effort
+            pass
         
         # Record metrics (non-blocking, fail-silent)
         try:

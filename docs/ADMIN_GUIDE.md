@@ -1,8 +1,10 @@
 # NeuroVest Admin Command Center Guide
 
 **Status**: Active  
-**Version**: 1.0  
+**Version**: 1.1  
 **Last Updated**: January 2026
+
+**For Developers**: See **[Technical Deep Dive & Architecture](./ADMIN_COMMAND_CENTER_TECHNICAL.md)** for code-level details.
 
 ---
 

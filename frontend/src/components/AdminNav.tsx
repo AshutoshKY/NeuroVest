@@ -16,6 +16,7 @@ import {
     Server,
     Brain,
     Plug,
+    Network,
     Users,
     ShieldAlert,
     AlertTriangle,
@@ -30,6 +31,7 @@ const platformNavItems = [
     { href: '/admin/infrastructure', label: 'Infrastructure (DB/Redis)', icon: Server },
     { href: '/admin/ai-rag', label: 'AI & RAG Engine', icon: Brain },
     { href: '/admin/api-health', label: 'External APIs', icon: Plug },
+    { href: '/admin/internal-apis', label: 'Internal APIs', icon: Network },
 ];
 
 const operationsNavItems = [

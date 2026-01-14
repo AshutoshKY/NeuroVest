@@ -12,7 +12,8 @@ from app.core.rbac import require_admin
 from app.models.user import User
 from app.services.metrics_collector import (
     MetricsCollector,
-    InfraMetricsCollector
+    InfraMetricsCollector,
+    DockerMetricsCollector
 )
 
 
@@ -117,3 +118,26 @@ async def get_metrics_overview(
             "chromadb": {"status": "healthy" if chromadb_healthy else "down"}
         }
     }
+
+
+@router.get("/infrastructure/containers")
+async def get_container_metrics(
+    current_user: User = Depends(require_admin)
+):
+    """
+    Get Docker container resource metrics (CPU, Memory, Network I/O).
+    
+    Returns metrics for all stockmarket containers:
+    - stockmarket_backend: FastAPI backend service
+    - stockmarket_frontend: Next.js frontend service
+    - stockmarket_redis: Redis cache
+    - stockmarket_mysql: MySQL database
+    
+    Each container includes:
+    - cpu_percent: CPU usage percentage
+    - memory: {used_mb, limit_mb, percent}
+    - network: {rx_mb, tx_mb}
+    - status: running, paused, exited, not_found
+    """
+    return DockerMetricsCollector.collect_container_stats()
+

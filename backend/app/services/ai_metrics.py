@@ -53,6 +53,13 @@ HOURLY_STATS_KEY = f"{AI_METRICS_PREFIX}hourly:"
 DAILY_STATS_KEY = f"{AI_METRICS_PREFIX}daily:"
 GUARDRAIL_KEY = f"{AI_METRICS_PREFIX}guardrails:"
 REQUEST_LOG_KEY = f"{AI_METRICS_PREFIX}requests:"
+RAG_OBSERVABILITY_KEY = f"{AI_METRICS_PREFIX}rag:"
+
+# RAG SLA configuration
+RAG_SLA = {
+    "p95_retrieval_ms": 500.0,  # Max acceptable p95 latency
+    "max_empty_context_rate": 20.0  # Max acceptable empty context %
+}
 
 
 @dataclass
@@ -347,6 +354,201 @@ class AIMetricsService:
         except Exception as e:
             logger.error(f"[AI_METRICS] Failed to get guardrail stats: {e}")
             return {"error": str(e)}
+    
+    # ==================== RAG OBSERVABILITY ====================
+    
+    @staticmethod
+    def record_rag_query(
+        request_id: str,
+        ticker: str,
+        docs_returned: int,
+        embedding_latency_ms: float,
+        retrieval_latency_ms: float,
+        llm_latency_ms: float,
+        total_latency_ms: float,
+        is_empty_context: bool = False,
+        user_id: Optional[int] = None,
+        success: bool = True
+    ):
+        """
+        Record a RAG query with detailed latency breakdown.
+        Called after each RAG analysis request.
+        """
+        try:
+            redis = get_redis()
+            now = datetime.now(timezone.utc)
+            hour_key = now.strftime("%Y%m%d%H")
+            day_key = now.strftime("%Y%m%d")
+            
+            # Hourly RAG stats
+            rag_hourly_key = f"{RAG_OBSERVABILITY_KEY}hourly:{hour_key}"
+            pipe = redis.pipeline()
+            
+            # Counters
+            pipe.hincrby(rag_hourly_key, "total_queries", 1)
+            pipe.hincrby(rag_hourly_key, "total_docs_returned", docs_returned)
+            
+            if success:
+                pipe.hincrby(rag_hourly_key, "successful_queries", 1)
+            else:
+                pipe.hincrby(rag_hourly_key, "failed_queries", 1)
+            
+            if is_empty_context:
+                pipe.hincrby(rag_hourly_key, "empty_context_count", 1)
+            
+            # Latency aggregates for averages
+            pipe.hincrbyfloat(rag_hourly_key, "total_embedding_ms", embedding_latency_ms)
+            pipe.hincrbyfloat(rag_hourly_key, "total_retrieval_ms", retrieval_latency_ms)
+            pipe.hincrbyfloat(rag_hourly_key, "total_llm_ms", llm_latency_ms)
+            pipe.hincrbyfloat(rag_hourly_key, "total_latency_ms", total_latency_ms)
+            
+            # Track latency for p95 calculation (store in sorted set)
+            latency_key = f"{RAG_OBSERVABILITY_KEY}latency:{day_key}"
+            pipe.zadd(latency_key, {f"{request_id}": total_latency_ms})
+            
+            # Track SLA violations (if total > SLA threshold)
+            if total_latency_ms > RAG_SLA["p95_retrieval_ms"]:
+                pipe.hincrby(rag_hourly_key, "sla_violations", 1)
+            
+            # Set TTLs
+            pipe.expire(rag_hourly_key, 7 * 24 * 3600)  # 7 days
+            pipe.expire(latency_key, 24 * 3600)  # 24 hours
+            
+            # Daily aggregate
+            rag_daily_key = f"{RAG_OBSERVABILITY_KEY}daily:{day_key}"
+            pipe.hincrby(rag_daily_key, "total_queries", 1)
+            pipe.hincrby(rag_daily_key, "total_docs_returned", docs_returned)
+            if is_empty_context:
+                pipe.hincrby(rag_daily_key, "empty_context_count", 1)
+            if total_latency_ms > RAG_SLA["p95_retrieval_ms"]:
+                pipe.hincrby(rag_daily_key, "sla_violations", 1)
+            pipe.expire(rag_daily_key, 30 * 24 * 3600)  # 30 days
+            
+            pipe.execute()
+            
+            logger.debug(
+                f"[AI_METRICS] RAG query recorded: ticker={ticker} | "
+                f"docs={docs_returned} | empty={is_empty_context} | latency={total_latency_ms:.0f}ms"
+            )
+            
+        except Exception as e:
+            logger.error(f"[AI_METRICS] Failed to record RAG query: {e}")
+    
+    @staticmethod
+    def get_rag_observability(hours: int = 24) -> Dict[str, Any]:
+        """
+        Get RAG observability metrics for the SRE dashboard.
+        
+        Returns:
+        - Retrieval success %
+        - Empty context rate
+        - Avg docs per query
+        - Latency breakdown (embedding, retrieval, LLM)
+        - SLA violation %
+        """
+        try:
+            redis = get_redis()
+            now = datetime.now(timezone.utc)
+            
+            # Aggregate from hourly buckets
+            total_queries = 0
+            successful_queries = 0
+            empty_context_count = 0
+            total_docs = 0
+            sla_violations = 0
+            
+            total_embedding_ms = 0.0
+            total_retrieval_ms = 0.0
+            total_llm_ms = 0.0
+            total_latency_ms = 0.0
+            
+            for i in range(hours):
+                hour = now - timedelta(hours=i)
+                hour_key = hour.strftime("%Y%m%d%H")
+                rag_key = f"{RAG_OBSERVABILITY_KEY}hourly:{hour_key}"
+                
+                data = redis.hgetall(rag_key)
+                if data:
+                    total_queries += int(data.get("total_queries", 0))
+                    successful_queries += int(data.get("successful_queries", 0))
+                    empty_context_count += int(data.get("empty_context_count", 0))
+                    total_docs += int(data.get("total_docs_returned", 0))
+                    sla_violations += int(data.get("sla_violations", 0))
+                    
+                    total_embedding_ms += float(data.get("total_embedding_ms", 0))
+                    total_retrieval_ms += float(data.get("total_retrieval_ms", 0))
+                    total_llm_ms += float(data.get("total_llm_ms", 0))
+                    total_latency_ms += float(data.get("total_latency_ms", 0))
+            
+            # Calculate aggregated metrics
+            if total_queries > 0:
+                retrieval_success_percent = (successful_queries / total_queries) * 100
+                empty_context_rate = (empty_context_count / total_queries) * 100
+                avg_docs_per_query = total_docs / total_queries
+                sla_violation_percent = (sla_violations / total_queries) * 100
+                
+                avg_embedding_ms = total_embedding_ms / total_queries
+                avg_retrieval_ms = total_retrieval_ms / total_queries
+                avg_llm_ms = total_llm_ms / total_queries
+                avg_total_ms = total_latency_ms / total_queries
+            else:
+                retrieval_success_percent = 100.0
+                empty_context_rate = 0.0
+                avg_docs_per_query = 0.0
+                sla_violation_percent = 0.0
+                avg_embedding_ms = 0.0
+                avg_retrieval_ms = 0.0
+                avg_llm_ms = 0.0
+                avg_total_ms = 0.0
+            
+            # Get p95 latency from sorted set (today)
+            day_key = now.strftime("%Y%m%d")
+            latency_key = f"{RAG_OBSERVABILITY_KEY}latency:{day_key}"
+            latency_count = redis.zcard(latency_key)
+            
+            p95_latency_ms = 0.0
+            if latency_count > 0:
+                # Get the 95th percentile index
+                p95_index = int(latency_count * 0.95)
+                p95_values = redis.zrange(latency_key, p95_index, p95_index, withscores=True)
+                if p95_values:
+                    p95_latency_ms = p95_values[0][1]
+            
+            return {
+                "retrieval_success_percent": round(retrieval_success_percent, 2),
+                "empty_context_rate": round(empty_context_rate, 2),
+                "avg_docs_per_query": round(avg_docs_per_query, 2),
+                "latency_breakdown": {
+                    "embedding_ms": round(avg_embedding_ms, 2),
+                    "retrieval_ms": round(avg_retrieval_ms, 2),
+                    "llm_ms": round(avg_llm_ms, 2),
+                    "total_ms": round(avg_total_ms, 2),
+                    "p95_ms": round(p95_latency_ms, 2)
+                },
+                "sla_violation_percent": round(sla_violation_percent, 2),
+                "total_queries": total_queries,
+                "period_hours": hours,
+                "sla_threshold_ms": RAG_SLA["p95_retrieval_ms"],
+                "timestamp": now.isoformat()
+            }
+            
+        except Exception as e:
+            logger.error(f"[AI_METRICS] Failed to get RAG observability: {e}")
+            return {
+                "retrieval_success_percent": 100.0,
+                "empty_context_rate": 0.0,
+                "avg_docs_per_query": 0.0,
+                "latency_breakdown": {
+                    "embedding_ms": 0.0,
+                    "retrieval_ms": 0.0,
+                    "llm_ms": 0.0,
+                    "total_ms": 0.0,
+                    "p95_ms": 0.0
+                },
+                "sla_violation_percent": 0.0,
+                "total_queries": 0,
+                "error": str(e)
+            }
 
 
 # Singleton instance

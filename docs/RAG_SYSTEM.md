@@ -17,6 +17,7 @@
 10. [Caching Strategy](#caching-strategy)
 11. [Frontend-Backend Integration](#frontend-backend-integration)
 12. [Performance & Cost Analysis](#performance--cost-analysis)
+13. [Real-Time Observability](#real-time-observability)
 
 ---
 
@@ -43,6 +44,7 @@
 | **Vector DB** | ChromaDB (Persistent) | Store & search embeddings |
 | **LLM** | Azure OpenAI GPT-4 | Generate analysis from context |
 | **Caching** | Redis (1h) + MySQL + ChromaDB | Multi-tier performance optimization |
+| **Performance** | AsyncIO + Background Loading | Non-blocking start & concurrent reqs |
 | **Security** | Guardrails Service | Input validation, output sanitization |
 
 ---
@@ -169,7 +171,7 @@
                    │
                    v
 ┌────────────────────────────────────────────────────────────────────┐
-│                      LLM LAYER (Azure OpenAI GPT-4)                 │
+│              LLM LAYER (Async Azure OpenAI GPT-4)                   │
 └────────────────────────────────────────────────────────────────────┘
          │
          │ Temperature: 0.5
@@ -410,7 +412,7 @@ USER REQUEST
 │ Response Format: {type: "json_object"}                            │
 │                                                                   │
 │ Cost: ~$0.03-0.10 per request (depends on context length)         │
-│ Latency: 2-5 seconds                                              │
+│ Latency: 2-5 seconds (Non-blocking / Concurrent)                  │
 │                                                                   │
 │ Response: {                                                       │
 │   summary: "TCS shows strong momentum with Q3 earnings beat...",  │
@@ -680,15 +682,16 @@ OUTPUT (JSON):
 ### Azure OpenAI Setup
 
 ```python
-from openai import AzureOpenAI
+from openai import AsyncAzureOpenAI
+import asyncio
 
-client = AzureOpenAI(
+client = AsyncAzureOpenAI(
     api_key=os.getenv("AZURE_OPENAI_API_KEY"),
     api_version="2024-02-15-preview",
     azure_endpoint=os.getenv("AZURE_OPENAI_ENDPOINT")
 )
 
-response = client.chat.completions.create(
+response = await client.chat.completions.create(
     model="gpt-4",
     messages=[
         {
@@ -1110,4 +1113,29 @@ The RAG system combines:
 *Version: 1.0*  
 *Last Updated: December 11, 2025*  
 *Total: 1,050+ lines*
+
+
+---
+
+## Real-Time Observability
+
+### AIMetricsService Pattern
+
+The system uses an event-based metrics collection pattern to provide real-time visibility into RAG performance without adding latency.
+
+**Metrics Captured per Query**:
+1.  **Embedding Latency**: Time to vectorise user query.
+2.  **Retrieval Latency**: Time to fetch documents from ChromaDB.
+3.  **LLM Latency**: Time for Azure OpenAI to generate response.
+4.  **Documents Retrieved**: Count of relevant chunks found.
+5.  **Token Usage**: Input/Output tokens (used for cost calculation).
+6.  **Cost**: Estimated cost in USD based on Azure pricing.
+
+### Dashboard Integration
+
+The gathered metrics are streamed to the Admin Dashboard (`/admin/ai-rag`) via the `AdminOrchestrator`.
+
+-   **Scatter Plot**: Visualizes the relationship between Token Usage and Latency.
+-   **Cost Estimator**: Tracks daily accumulation of AI spend.
+-   **Latency Breakdown**: Helps identify bottlenecks (e.g., if Retrieval > LLM, optimize ChromaDB).
 

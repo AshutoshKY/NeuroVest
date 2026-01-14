@@ -115,6 +115,16 @@ async def lifespan(app: FastAPI):
             "error": str(e)
         }, exc_info=True)
     
+    # Preload embedding model in background (non-blocking)
+    try:
+        from app.services.embeddings import embedding_service
+        import asyncio
+        logger.info("🚀 Triggering background embedding model loading...", extra={"operation": "embedding_model_preload"})
+        # Run as background task so startup doesn't wait
+        asyncio.create_task(embedding_service.preload_model())
+    except Exception as e:
+        logger.error(f"❌ Failed to trigger embedding model preload: {e}")
+
     logger.info("=" * 80)
     logger.info("✅ Application startup complete - Ready to serve requests")
     
@@ -178,7 +188,7 @@ logger.info("✅ Security middleware enabled (IP blacklist, system toggles, DDOS
 
 
 # CORS middleware - Production ready
-# Supports: Oracle Cloud backend + Streamlit Cloud frontend
+# Supports: Oracle Cloud backend + Vercel/Streamlit Cloud frontend
 allowed_origins = [
     "http://localhost:3000",
     "http://localhost:3001",  # Frontend v2 running on 3001
@@ -188,17 +198,18 @@ allowed_origins = [
 ]
 
 # Add production origins from environment (comma-separated)
+# Supports both CORS_ORIGINS (preferred) and ALLOWED_ORIGINS (legacy)
 import os
-production_origins = os.getenv("ALLOWED_ORIGINS", "")
+production_origins = os.getenv("CORS_ORIGINS") or os.getenv("ALLOWED_ORIGINS", "")
 if production_origins:
     allowed_origins.extend([origin.strip() for origin in production_origins.split(",") if origin.strip()])
 
-# Add wildcard for Streamlit Cloud subdomains (*.streamlit.app)
-# Note: For production, specify exact domains instead of wildcards
+# Add wildcard regexes for Streamlit and Vercel subdomains
+# Note: For production, specify exact domains instead of wildcards for better security
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,  # Specific origins
-    allow_origin_regex=r"https://.*\.streamlit\.app",  # Streamlit Cloud wildcard
+    allow_origin_regex=r"https://.*\.(streamlit\.app|vercel\.app)",  # Streamlit & Vercel wildcards
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],

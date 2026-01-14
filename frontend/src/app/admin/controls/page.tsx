@@ -9,21 +9,12 @@
  * - Force logout action
  * 
  * SUPER_ADMIN required for all actions
- * Typed confirmation modals required
+ * Only reason required for confirmation (no typed codes)
  */
 
 import { useState } from 'react';
 import { useKillSwitches, useSessionControl } from '@/hooks/useAdminAPI';
 import { AlertTriangle } from 'lucide-react';
-
-// Confirmation codes for each switch type
-const CONFIRMATION_CODES: Record<string, string> = {
-    emergency_shutdown: 'SHUTDOWN',
-    block_logins: 'BLOCK',
-    block_signups: 'BLOCK',
-    maintenance_mode: 'MAINTENANCE',
-    readonly_db: 'READONLY'
-};
 
 export default function ControlsPage() {
     const { switches, activateSwitch, deactivateSwitch, isLoading } = useKillSwitches();
@@ -33,25 +24,23 @@ export default function ControlsPage() {
         type: string;
         action: 'activate' | 'deactivate' | 'logout';
         title: string;
-        confirmText: string;
+        description: string;
     } | null>(null);
-    const [confirmInput, setConfirmInput] = useState('');
     const [actionReason, setActionReason] = useState('');
+    const [securityPin, setSecurityPin] = useState('');
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const handleAction = async () => {
         if (!confirmModal) return;
 
-        const expectedCode = CONFIRMATION_CODES[confirmModal.type] || confirmModal.type.toUpperCase();
-
-        if (confirmModal.action !== 'logout' && confirmInput !== expectedCode) {
-            setError(`Type "${expectedCode}" to confirm`);
+        if (!actionReason.trim()) {
+            setError('Please provide a reason for this action');
             return;
         }
 
-        if (confirmModal.action === 'logout' && confirmInput !== 'LOGOUT_ALL') {
-            setError('Type "LOGOUT_ALL" to confirm');
+        if (!securityPin.trim()) {
+            setError('Security PIN is required');
             return;
         }
 
@@ -60,15 +49,15 @@ export default function ControlsPage() {
 
         try {
             if (confirmModal.action === 'activate') {
-                await activateSwitch(confirmModal.type, expectedCode, actionReason);
+                await activateSwitch(confirmModal.type, confirmModal.type.toUpperCase(), actionReason, securityPin);
             } else if (confirmModal.action === 'deactivate') {
-                await deactivateSwitch(confirmModal.type, actionReason);
+                await deactivateSwitch(confirmModal.type, actionReason, securityPin);
             } else if (confirmModal.action === 'logout') {
                 await forceLogoutAll('LOGOUT_ALL', actionReason);
             }
             setConfirmModal(null);
-            setConfirmInput('');
             setActionReason('');
+            setSecurityPin('');
         } catch (err: unknown) {
             const errorMessage = err instanceof Error ? err.message : 'Action failed';
             setError(errorMessage);
@@ -77,12 +66,12 @@ export default function ControlsPage() {
         }
     };
 
-    const toggleSwitch = (switchType: string, currentActive: boolean) => {
+    const toggleSwitch = (switchType: string, currentActive: boolean, description: string) => {
         setConfirmModal({
             type: switchType,
             action: currentActive ? 'deactivate' : 'activate',
-            title: currentActive ? `Deactivate ${switchType}?` : `Activate ${switchType}?`,
-            confirmText: CONFIRMATION_CODES[switchType] || switchType.toUpperCase()
+            title: currentActive ? `Deactivate ${switchType.replace(/_/g, ' ')}?` : `Activate ${switchType.replace(/_/g, ' ')}?`,
+            description
         });
     };
 
@@ -119,13 +108,13 @@ export default function ControlsPage() {
                                     type: 'emergency_shutdown',
                                     action: isActive ? 'deactivate' : 'activate',
                                     title: isActive ? 'Deactivate Emergency Shutdown?' : 'Activate Emergency Shutdown?',
-                                    confirmText: 'SHUTDOWN'
+                                    description: 'This will block all non-admin API traffic immediately.'
                                 });
                             }}
                             disabled={isLoading}
                             className={`text-white text-lg font-bold py-4 px-10 rounded-lg shadow-lg transform active:scale-95 transition ${switches['emergency_shutdown']?.is_active
-                                    ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/40'
-                                    : 'bg-red-500 hover:bg-red-600 shadow-red-900/40'
+                                ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-900/40'
+                                : 'bg-red-500 hover:bg-red-600 shadow-red-900/40'
                                 }`}
                         >
                             {switches['emergency_shutdown']?.is_active ? 'DEACTIVATE KILL SWITCH' : 'ACTIVATE KILL SWITCH'}
@@ -145,11 +134,11 @@ export default function ControlsPage() {
                                 <div className="text-xs text-slate-500">Prevent new registrations</div>
                             </div>
                             <button
-                                onClick={() => toggleSwitch('block_signups', switches['block_signups']?.is_active)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${switches['block_signups']?.is_active ? 'bg-red-500' : 'bg-gray-700'
+                                onClick={() => toggleSwitch('block_signups', switches['block_signups']?.is_active, 'Prevent new user registrations')}
+                                className={`relative w-12 h-6 rounded-full transition-colors border-2 ${switches['block_signups']?.is_active ? 'bg-red-500 border-red-400' : 'bg-slate-700 border-slate-600'
                                     }`}
                             >
-                                <span className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${switches['block_signups']?.is_active ? 'translate-x-5' : 'translate-x-0.5'
+                                <span className={`absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-transform shadow-md ${switches['block_signups']?.is_active ? 'translate-x-6' : 'translate-x-0'
                                     }`}></span>
                             </button>
                         </div>
@@ -161,11 +150,11 @@ export default function ControlsPage() {
                                 <div className="text-xs text-slate-500">Prevent session creation</div>
                             </div>
                             <button
-                                onClick={() => toggleSwitch('block_logins', switches['block_logins']?.is_active)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${switches['block_logins']?.is_active ? 'bg-red-500' : 'bg-gray-700'
+                                onClick={() => toggleSwitch('block_logins', switches['block_logins']?.is_active, 'Prevent all login attempts')}
+                                className={`relative w-12 h-6 rounded-full transition-colors border-2 ${switches['block_logins']?.is_active ? 'bg-red-500 border-red-400' : 'bg-slate-700 border-slate-600'
                                     }`}
                             >
-                                <span className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${switches['block_logins']?.is_active ? 'translate-x-5' : 'translate-x-0.5'
+                                <span className={`absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-transform shadow-md ${switches['block_logins']?.is_active ? 'translate-x-6' : 'translate-x-0'
                                     }`}></span>
                             </button>
                         </div>
@@ -182,7 +171,7 @@ export default function ControlsPage() {
                                     type: 'logout',
                                     action: 'logout',
                                     title: 'Force Logout All Users?',
-                                    confirmText: 'LOGOUT_ALL'
+                                    description: 'This will invalidate all active sessions and force all users to re-login.'
                                 })}
                                 className="bg-[#0f172a] border border-red-500 text-red-400 px-4 py-2 rounded font-bold text-xs hover:bg-red-500 hover:text-white transition"
                             >
@@ -197,11 +186,11 @@ export default function ControlsPage() {
                                 <div className="text-xs text-slate-500">Show maintenance page</div>
                             </div>
                             <button
-                                onClick={() => toggleSwitch('maintenance_mode', switches['maintenance_mode']?.is_active)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${switches['maintenance_mode']?.is_active ? 'bg-red-500' : 'bg-gray-700'
+                                onClick={() => toggleSwitch('maintenance_mode', switches['maintenance_mode']?.is_active, 'Show maintenance page to non-admin users')}
+                                className={`relative w-12 h-6 rounded-full transition-colors border-2 ${switches['maintenance_mode']?.is_active ? 'bg-red-500 border-red-400' : 'bg-slate-700 border-slate-600'
                                     }`}
                             >
-                                <span className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${switches['maintenance_mode']?.is_active ? 'translate-x-5' : 'translate-x-0.5'
+                                <span className={`absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-transform shadow-md ${switches['maintenance_mode']?.is_active ? 'translate-x-6' : 'translate-x-0'
                                     }`}></span>
                             </button>
                         </div>
@@ -213,11 +202,11 @@ export default function ControlsPage() {
                                 <div className="text-xs text-slate-500">Block all writes</div>
                             </div>
                             <button
-                                onClick={() => toggleSwitch('readonly_db', switches['readonly_db']?.is_active)}
-                                className={`relative w-10 h-5 rounded-full transition-colors ${switches['readonly_db']?.is_active ? 'bg-red-500' : 'bg-gray-700'
+                                onClick={() => toggleSwitch('readonly_db', switches['readonly_db']?.is_active, 'Block all database write operations')}
+                                className={`relative w-12 h-6 rounded-full transition-colors border-2 ${switches['readonly_db']?.is_active ? 'bg-red-500 border-red-400' : 'bg-slate-700 border-slate-600'
                                     }`}
                             >
-                                <span className={`absolute w-4 h-4 bg-white rounded-full top-0.5 transition-transform ${switches['readonly_db']?.is_active ? 'translate-x-5' : 'translate-x-0.5'
+                                <span className={`absolute w-5 h-5 bg-white rounded-full top-0.5 left-0.5 transition-transform shadow-md ${switches['readonly_db']?.is_active ? 'translate-x-6' : 'translate-x-0'
                                     }`}></span>
                             </button>
                         </div>
@@ -227,30 +216,38 @@ export default function ControlsPage() {
 
             </div>
 
-            {/* Confirmation Modal */}
+            {/* Confirmation Modal - Only requires reason now */}
             {confirmModal && (
                 <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
                     <div className="bg-[#0f172a] border border-[#1e293b] rounded-xl p-6 w-full max-w-md">
-                        <h3 className="text-lg font-bold text-white mb-4">{confirmModal.title}</h3>
+                        <h3 className="text-lg font-bold text-white mb-2">{confirmModal.title}</h3>
 
                         <p className="text-slate-400 text-sm mb-4">
-                            Type <span className="font-mono text-red-400">{confirmModal.confirmText}</span> to confirm this action.
+                            {confirmModal.description}
                         </p>
 
-                        <input
-                            type="text"
-                            value={confirmInput}
-                            onChange={(e) => setConfirmInput(e.target.value.toUpperCase())}
-                            placeholder={confirmModal.confirmText}
-                            className="w-full bg-[#020617] border border-[#1e293b] rounded px-3 py-2 text-white font-mono mb-4"
-                        />
-
+                        <label className="block text-sm text-slate-400 mb-2">
+                            Reason for this action <span className="text-red-400">*</span>
+                        </label>
                         <input
                             type="text"
                             value={actionReason}
                             onChange={(e) => setActionReason(e.target.value)}
-                            placeholder="Reason for action (required)"
+                            placeholder="e.g., Security incident, Scheduled maintenance..."
                             className="w-full bg-[#020617] border border-[#1e293b] rounded px-3 py-2 text-white mb-4"
+                            autoFocus
+                        />
+
+                        <label className="block text-xs text-slate-400 mb-1">
+                            Security PIN <span className="text-red-400">*</span>
+                        </label>
+                        <input
+                            type="password"
+                            value={securityPin}
+                            onChange={(e) => setSecurityPin(e.target.value)}
+                            placeholder="Enter 6-digit security PIN"
+                            maxLength={6}
+                            className="w-full bg-[#020617] border border-amber-500/30 rounded px-3 py-2 text-white mb-4 font-mono tracking-widest text-center"
                         />
 
                         {error && (
@@ -261,8 +258,8 @@ export default function ControlsPage() {
                             <button
                                 onClick={() => {
                                     setConfirmModal(null);
-                                    setConfirmInput('');
                                     setActionReason('');
+                                    setSecurityPin('');
                                     setError(null);
                                 }}
                                 className="flex-1 bg-[#1e293b] text-slate-400 py-2 rounded font-bold hover:bg-[#334155] transition"
@@ -271,7 +268,7 @@ export default function ControlsPage() {
                             </button>
                             <button
                                 onClick={handleAction}
-                                disabled={isSubmitting || !actionReason}
+                                disabled={isSubmitting || !actionReason.trim() || !securityPin.trim()}
                                 className="flex-1 bg-red-500 text-white py-2 rounded font-bold hover:bg-red-600 transition disabled:opacity-50"
                             >
                                 {isSubmitting ? 'Processing...' : 'Confirm'}
@@ -283,3 +280,4 @@ export default function ControlsPage() {
         </>
     );
 }
+
