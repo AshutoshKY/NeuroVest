@@ -48,7 +48,7 @@ streamlit==1.32.0
 streamlit-searchbox==0.1.11
 PyYAML==6.0.1
 pydantic-settings==2.1.0
-schedule==1.2.0
+schedule==1.2.2
 python-dotenv==1.0.0
 redis==5.0.1
 loguru==0.7.2
