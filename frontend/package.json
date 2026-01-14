@@ -48,7 +48,7 @@
     "@types/plotly.js": "^3.0.8",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "@types/react-plotly.js": "^2.6.3",
+    "@types/react-plotly.js": "^2.6.4",
     "@types/three": "^0.164.0",
     "eslint": "^9",
     "eslint-config-next": "15.1.2",
