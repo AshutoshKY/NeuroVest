@@ -35,7 +35,7 @@ pydantic==2.12.5
 # Authentication
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
-bcrypt==4.1.2  # Compatible version with passlib
+bcrypt==5.0.0  # Compatible version with passlib
 pycryptodome==3.19.0  # For AES encryption/decryption
 passlib==1.7.4
 
