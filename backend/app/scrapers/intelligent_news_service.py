@@ -241,11 +241,11 @@ class IntelligentNewsService:
         
         
         #=== LAYER 3: DuckDuckGo Web Scraper (Last Resort) ===
-        if len(articles) < min_articles:
+        if len(all_articles) < min_articles:
             try:
                 self.stats['fallback']['attempts'] += 1
                 
-                logger.info(f"🔍 [LAYER3_START] Need more articles ({len(articles)}/{min_articles}), trying DuckDuckGo for {ticker}", extra={
+                logger.info(f"🔍 [LAYER3_START] Need more articles ({len(all_articles)}/{min_articles}), trying DuckDuckGo for {ticker}", extra={
                     "operation": "layer3_duckduckgo_start",
                     "ticker": ticker,
                     "layer": 3,
@@ -262,7 +262,7 @@ class IntelligentNewsService:
                     None,
                     self.web_scraper.search_and_scrape,
                     query,
-                    max_articles - len(articles)
+                    max_articles - len(all_articles)
                 )
                 
                 if fallback_articles:
@@ -271,7 +271,7 @@ class IntelligentNewsService:
                         article['acquisition_layer'] = 'fallback_web'
                         article['layer_priority'] = 3
                     
-                    articles.extend(fallback_articles)
+                    all_articles.extend(fallback_articles)
                     self.stats['fallback']['successes'] += 1
                     self.stats['fallback']['articles'] += len(fallback_articles)
                     
@@ -294,7 +294,7 @@ class IntelligentNewsService:
                 })
         
         # === CROSS-LAYER DEDUPLICATION ===
-        unique_articles = self._deduplicate_across_layers(articles)
+        unique_articles = self._deduplicate_across_layers(all_articles)
         
         # === RANK BY QUALITY ===
         ranked_articles = self._rank_by_quality(unique_articles)

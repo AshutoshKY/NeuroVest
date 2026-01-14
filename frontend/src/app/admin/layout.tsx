@@ -1,7 +1,12 @@
 'use client';
 
+/**
+ * Admin Layout
+ * 
+ * Matches POC design: dark theme, sticky header, persistent sidebar
+ */
+
 import { AdminNav } from '@/components/AdminNav';
-import { Header } from '@/components/Header'; // Reusing header
 import AdminRoute from '@/components/AdminRoute';
 
 export default function AdminLayout({
@@ -11,19 +16,14 @@ export default function AdminLayout({
 }) {
     return (
         <AdminRoute>
-            <div className="flex h-screen bg-slate-950 font-sans text-slate-100">
-                <aside className="hidden h-full w-64 border-r border-slate-800 bg-slate-950 md:flex md:flex-col">
-                    <AdminNav />
-                </aside>
+            <div className="flex h-screen overflow-hidden text-sm font-sans" style={{ backgroundColor: '#020617', color: '#94a3b8' }}>
+                {/* Sidebar */}
+                <AdminNav />
 
-                <div className="flex flex-1 flex-col overflow-hidden">
-                    <Header />
-                    <main className="flex-1 overflow-y-auto bg-slate-950 p-6">
-                        <div className="mx-auto max-w-7xl space-y-8">
-                            {children}
-                        </div>
-                    </main>
-                </div>
+                {/* Main Content */}
+                <main className="flex-1 flex flex-col relative overflow-hidden">
+                    {children}
+                </main>
             </div>
         </AdminRoute>
     );

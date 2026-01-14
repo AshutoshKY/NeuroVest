@@ -12,10 +12,12 @@ class EmbeddingService:
     """Service for generating and managing embeddings using sentence-transformers."""
     
     def __init__(self):
-        """Initialize ChromaDB. Model loads lazily on first use."""
+        """Initialize ChromaDB. Model loads lazily or via preload."""
         # Use local embedding model (free, no API needed)
-        self.model = None  # Lazy load on first use
-        logger.info("Embedding service initialized (model will load on first use)")
+        self.model = None
+        import threading
+        self._model_lock = threading.Lock()
+        logger.info("Embedding service initialized (model will load on first use or preload)")
         
         self.chroma_client = chromadb.PersistentClient(
             path=str(settings.CHROMA_DB_PATH)
@@ -39,15 +41,27 @@ class EmbeddingService:
         return self.news_collection
     
     def _ensure_model_loaded(self):
-        """Load model lazily on first use to avoid blocking startup."""
+        """Load model lazily on first use (thread-safe)."""
         if self.model is None:
-            logger.info("🔄 Loading sentence-transformers model...")
-            try:
-                self.model = SentenceTransformer('all-MiniLM-L6-v2')
-                logger.info("✅ Loaded local embedding model: all-MiniLM-L6-v2")
-            except Exception as e:
-                logger.error(f"❌ Failed to load embedding model: {e}")
-                raise
+            with self._model_lock:
+                # Double-check inside lock
+                if self.model is None:
+                    logger.info("🔄 Loading sentence-transformers model (blocking)...")
+                    try:
+                        self.model = SentenceTransformer('all-MiniLM-L6-v2')
+                        logger.info("✅ Loaded local embedding model: all-MiniLM-L6-v2")
+                    except Exception as e:
+                        logger.error(f"❌ Failed to load embedding model: {e}")
+                        raise
+
+    async def preload_model(self):
+        """Preload model in a separate thread to avoid blocking event loop."""
+        if self.model is None:
+            logger.info("🚀 Starting background model preload...")
+            import asyncio
+            # Run the blocking loading in a thread
+            await asyncio.to_thread(self._ensure_model_loaded)
+            logger.info("✅ Background model preload complete")
     
     def get_collection_count(self, collection_type: str = "news") -> int:
         """Get number of documents in the collection."""
