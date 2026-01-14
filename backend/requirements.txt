@@ -14,7 +14,7 @@ chromadb==0.4.22
 # AI/ML
 openai==1.58.1
 spacy==3.7.2
-sentence-transformers==2.7.0
+sentence-transformers==5.2.0
 
 # Web Scraping
 beautifulsoup4==4.12.2
