@@ -21,7 +21,7 @@
     "framer-motion": "^11.1.7",
     "jose": "^5.2.4",
     "lightweight-charts": "^4.1.3",
-    "lucide-react": "^0.556.0",
+    "lucide-react": "^0.562.0",
     "next": "15.1.2",
     "plotly.js-finance-dist": "^3.3.0",
     "react": "19.0.0",
