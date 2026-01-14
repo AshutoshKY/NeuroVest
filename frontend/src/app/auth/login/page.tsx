@@ -23,7 +23,10 @@ export default function LoginPage() {
 
     try {
       await login(formData.email, formData.password);
-      router.push('/dashboard');
+      // Get user from store to check role
+      const { user } = useAuthStore.getState();
+      const isAdmin = user?.role === 'admin' || user?.role === 'super_admin';
+      router.push(isAdmin ? '/admin' : '/dashboard');
     } catch (err: any) {
       const errorMessage = err.message || err.response?.data?.detail || 'Login failed. Please check your credentials.';
       setError(errorMessage);

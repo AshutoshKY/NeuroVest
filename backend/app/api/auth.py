@@ -168,6 +168,15 @@ async def login(
     # Check if user exists
     if not user:
         logger.warning(f"[AUTH] Login failed - user not found: {credentials.email}")
+        # Track auth failure in Redis for SOC dashboard
+        try:
+            from app.core.redis_client import get_redis
+            redis = get_redis()
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            redis.incr(f"security:events:{today}:auth_failure")
+            redis.expire(f"security:events:{today}:auth_failure", 86400 * 7)
+        except Exception:
+            pass
         # Record failed login
         try:
             await LoginTracker.record_login_attempt(
@@ -211,6 +220,16 @@ async def login(
         
         db.commit()
         logger.warning(f"[AUTH] Invalid password for {user.email}, attempts={user.failed_login_attempts}")
+        
+        # Track auth failure in Redis for SOC dashboard
+        try:
+            from app.core.redis_client import get_redis
+            redis = get_redis()
+            today = datetime.utcnow().strftime("%Y-%m-%d")
+            redis.incr(f"security:events:{today}:auth_failure")
+            redis.expire(f"security:events:{today}:auth_failure", 86400 * 7)
+        except Exception:
+            pass
         
         # Record failed login
         try:
@@ -420,6 +439,20 @@ async def refresh_token(
     except Exception as e:
         logger.error(f"[AUTH] Error updating session info: {e}")
     
+    # Track JWT refresh in Redis for User Intelligence metrics
+    try:
+        from app.core.redis_client import get_redis
+        redis = get_redis()
+        # Daily counter (expires after 25 hours to capture full 24h window)
+        redis.incr("metrics:jwt_refreshes:24h")
+        redis.expire("metrics:jwt_refreshes:24h", 90000)  # 25 hours
+        # Hourly tracking
+        hour_key = datetime.utcnow().strftime("%Y%m%d%H")
+        redis.incr(f"metrics:jwt_refreshes:hour:{hour_key}")
+        redis.expire(f"metrics:jwt_refreshes:hour:{hour_key}", 86400)  # 24 hours
+    except Exception as e:
+        logger.debug(f"[AUTH] Failed to track JWT refresh: {e}")
+    
     logger.info(f"[AUTH] Token refreshed: user_id={user.id}, email={user.email}")
     
     # Create response with new tokens in cookies
@@ -460,11 +493,15 @@ async def logout(
     db: Session = Depends(get_db)
 ):
     """
-    Logout user by revoking refresh token.
+    Logout user by revoking refresh token and recording logout time.
     Reads refresh_token from httpOnly cookie.
     """
+    from app.models.user import LoginHistory
+    from datetime import datetime
+    
     # Get refresh token from cookie
     refresh_token = request.cookies.get("refresh_token")
+    device_name = None
     
     if refresh_token:
         # Revoke refresh token
@@ -474,7 +511,36 @@ async def logout(
         ).first()
         
         if token:
+            device_name = token.device_name
             token.revoked = True
+            
+            # CRITICAL FIX: Update logout_time in LoginHistory
+            # Find the most recent login record for this user/device combination
+            try:
+                login_record = db.query(LoginHistory).filter(
+                    LoginHistory.user_id == current_user.id,
+                    LoginHistory.device_name == device_name,
+                    LoginHistory.logout_time == None,
+                    LoginHistory.login_success == True
+                ).order_by(LoginHistory.login_time.desc()).first()
+                
+                if login_record:
+                    login_record.logout_time = datetime.utcnow()
+                    logger.info(f"[AUTH] Updated logout_time for login_history id={login_record.id}")
+                else:
+                    # Fallback: update any recent login for this user
+                    login_record = db.query(LoginHistory).filter(
+                        LoginHistory.user_id == current_user.id,
+                        LoginHistory.logout_time == None,
+                        LoginHistory.login_success == True
+                    ).order_by(LoginHistory.login_time.desc()).first()
+                    
+                    if login_record:
+                        login_record.logout_time = datetime.utcnow()
+                        logger.info(f"[AUTH] Updated logout_time (fallback) for login_history id={login_record.id}")
+            except Exception as e:
+                logger.error(f"[AUTH] Error updating logout_time: {e}")
+            
             db.commit()
     
     # Clear cookies

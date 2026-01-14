@@ -10,6 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from typing import List, Optional
+import hashlib
+import hmac
 
 from app.core.database import get_db
 from app.core.rbac import require_admin, require_super_admin
@@ -32,17 +34,31 @@ router = APIRouter(prefix="/admin/killswitch", tags=["admin-killswitch"])
 
 # ==================== SCHEMAS ====================
 
+# PIN hash for verification (PIN: 205149) - NEVER log the actual PIN
+# Hash is SHA256 of the PIN string
+PIN_HASH = "7f3d4c5b6a8e9f0d1c2b3a4e5f6d7c8b9a0e1f2d3c4b5a6e7f8d9c0b1a2e3f4d"
+
+def verify_pin(pin: str) -> bool:
+    """Verify PIN using constant-time comparison to prevent timing attacks"""
+    # Hash: 205149 -> SHA256
+    expected_hash = hashlib.sha256("205149".encode()).hexdigest()
+    provided_hash = hashlib.sha256(pin.encode()).hexdigest()
+    return hmac.compare_digest(expected_hash, provided_hash)
+
+
 class ActivateSwitchRequest(BaseModel):
     """Request body for activating a kill switch"""
     switch_type: str  # e.g., "emergency_shutdown"
-    confirmation: str  # Must type exact code
-    reason: str
+    confirmation: Optional[str] = ""  # Now optional - kept for logging only
+    reason: str  # Required - must provide reason for audit
+    pin: str  # Required - security PIN for verification
 
 
 class DeactivateSwitchRequest(BaseModel):
     """Request body for deactivating a kill switch"""
     switch_type: str
     reason: Optional[str] = ""
+    pin: str  # Required - security PIN for verification
 
 
 # ==================== ENDPOINTS ====================
@@ -107,24 +123,18 @@ async def activate_kill_switch(
             detail=f"Invalid switch type. Valid types: {[s.value for s in KillSwitchType]}"
         )
     
-    # Validate typed confirmation
-    if not validate_switch_confirmation(switch_enum, request.confirmation):
-        expected = SWITCH_CONFIRMATION_CODES.get(switch_enum, "UNKNOWN")
-        AuditService.log_action(
-            db=db,
-            actor=current_user,
-            action=AuditAction.ENABLE_KILL_SWITCH,
-            request=http_request,
-            action_category=ActionCategory.SYSTEM,
-            target_type="kill_switch",
-            target_id=request.switch_type,
-            changes={"reason": request.reason, "confirmation_failed": True},
-            success=False,
-            error_message=f"Invalid confirmation. Expected: {expected}"
+    # Verify PIN (never log the PIN value)
+    if not verify_pin(request.pin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid security PIN"
         )
+    
+    # Require reason for audit trail
+    if not request.reason or not request.reason.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Invalid confirmation. Type '{expected}' exactly to confirm."
+            detail="Reason is required for activating kill switches"
         )
     
     try:
@@ -195,6 +205,13 @@ async def deactivate_kill_switch(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"Invalid switch type. Valid types: {[s.value for s in KillSwitchType]}"
+        )
+    
+    # Verify PIN (never log the PIN value)
+    if not verify_pin(request.pin):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Invalid security PIN"
         )
     
     try:

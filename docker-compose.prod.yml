@@ -1,0 +1,92 @@
+version: '3.8'
+
+# Production Docker Compose for Oracle Cloud Deployment
+# Usage: docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: neurovest_mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: stockmarket_db
+      MYSQL_USER: stockmarket_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - neurovest_network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost" ]
+      timeout: 20s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    container_name: neurovest_redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    networks:
+      - neurovest_network
+    restart: always
+    healthcheck:
+      test: [ "CMD", "redis-cli", "ping" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: neurovest_backend
+    environment:
+      # Database
+      MYSQL_HOST: mysql
+      MYSQL_PORT: 3306
+      MYSQL_USER: stockmarket_user
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_DATABASE: stockmarket_db
+      # Redis
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      # Azure OpenAI
+      AZURE_OPENAI_API_KEY: ${AZURE_OPENAI_API_KEY}
+      AZURE_OPENAI_ENDPOINT: ${AZURE_OPENAI_ENDPOINT}
+      AZURE_OPENAI_DEPLOYMENT: ${AZURE_OPENAI_DEPLOYMENT}
+      AZURE_OPENAI_API_VERSION: ${AZURE_OPENAI_API_VERSION}
+      AZURE_OPENAI_EMBEDDING_DEPLOYMENT: ${AZURE_OPENAI_EMBEDDING_DEPLOYMENT}
+      # Stock Data APIs
+      FINNHUB_API_KEY: ${FINNHUB_API_KEY}
+      ALPHA_VANTAGE_API_KEY: ${ALPHA_VANTAGE_API_KEY}
+      MARKETSTACK_API_KEY: ${MARKETSTACK_API_KEY:-}
+      # Auth
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      # Production settings
+      DEBUG: "False"
+      RATE_LIMIT_ENABLED: "true"
+      USE_SMART_ORCHESTRATOR: "false"
+      # CORS - Add your Vercel domain here
+      CORS_ORIGINS: ${CORS_ORIGINS:-https://neurovest.vercel.app}
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 4
+    ports:
+      - "8000:8000"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - neurovest_network
+    restart: always
+
+volumes:
+  mysql_data:
+  redis_data:
+
+
+networks:
+  neurovest_network:
+    driver: bridge

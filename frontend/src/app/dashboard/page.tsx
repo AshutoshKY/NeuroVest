@@ -51,7 +51,7 @@ export default function Dashboard() {
     const [isStepsCollapsed, setIsStepsCollapsed] = useState(false);
     const [chartRange, setChartRange] = useState<string>('1d');
     const [saveMessage, setSaveMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
-    const [currentAnalysisId, setCurrentAnalysisId] = useState<number | null>(null); // Track if viewing saved analysis
+    const [currentAnalysisId, setCurrentAnalysisId] = useState<string | null>(null); // Track if viewing saved analysis (UUID string)
 
     // Watchlist state
     const [watchlistTickers, setWatchlistTickers] = useState<string[]>([]);
@@ -364,7 +364,7 @@ export default function Dashboard() {
 
             setAnalysisResult(loadedData);
             setProgressStatus('complete');
-            setCurrentAnalysisId(parseInt(id)); // Mark as saved analysis
+            setCurrentAnalysisId(id); // Mark as saved analysis (UUID string)
             setSelectedStock({
                 ticker: loadedData.ticker,
                 name: loadedData.name || loadedData.ticker,
@@ -391,8 +391,8 @@ export default function Dashboard() {
         try {
             await apiClient.delete(`/api/saved-analyses/${id}`);
 
-            // Optimized: Remove from local state instead of refetching entire list
-            setSavedAnalyses(prev => prev.filter(analysis => analysis.id !== parseInt(id)));
+            // UUID comparison - compare as strings (not parseInt!)
+            setSavedAnalyses(prev => prev.filter(analysis => analysis.id !== id));
 
             setSaveMessage({ type: 'success', text: 'Analysis deleted successfully' });
             setTimeout(() => setSaveMessage(null), 3000);
