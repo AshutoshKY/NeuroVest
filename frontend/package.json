@@ -52,7 +52,7 @@
     "@types/three": "^0.164.0",
     "eslint": "^9",
     "eslint-config-next": "15.1.2",
-    "tailwindcss": "^4.0.0",
+    "tailwindcss": "^4.1.18",
     "typescript": "^5"
   }
 }
