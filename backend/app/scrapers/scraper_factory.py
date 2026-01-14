@@ -15,7 +15,7 @@ class ScraperFactory:
     """Factory for creating scrapers from YAML configuration."""
     
     @staticmethod
-    def load_config(config_path: str = '/app/config/sources.yaml') -> Dict[str, Any]:
+    def load_config(config_path: str = 'config/sources.yaml') -> Dict[str, Any]:
         """
         Load configuration from YAML file.
         
@@ -43,7 +43,7 @@ class ScraperFactory:
             return {'data_sources': {'news_scrapers': [], 'stock_apis': []}}
     
     @staticmethod
-    def create_scrapers(config_path: str = '/app/config/sources.yaml') -> List[GenericScraper]:
+    def create_scrapers(config_path: str = 'config/sources.yaml') -> List[GenericScraper]:
         """
         Create scraper instances from configuration.
         
@@ -83,7 +83,7 @@ class ScraperFactory:
         return scrapers
     
     @staticmethod
-    def get_api_configs(config_path: str = '/app/config/sources.yaml') -> List[Dict[str, Any]]:
+    def get_api_configs(config_path: str = 'config/sources.yaml') -> List[Dict[str, Any]]:
         """
         Get stock API configurations.
         
@@ -105,7 +105,7 @@ class ScraperFactory:
         return enabled_apis
     
     @staticmethod
-    def test_all_scrapers(config_path: str = '/app/config/sources.yaml') -> Dict[str, Any]:
+    def test_all_scrapers(config_path: str = 'config/sources.yaml') -> Dict[str, Any]:
         """
         Test all configured scrapers to verify selectors work.
         Useful for validating configuration.

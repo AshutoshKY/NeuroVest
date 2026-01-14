@@ -247,6 +247,6 @@ def analyze_volume(df: pd.DataFrame, period: int = 20) -> Tuple[float, bool, boo
     confirmation = (price_change > 0 and volume_change > 0) or (price_change < 0 and volume_change > 0)
     
     # Spike: volume > 2x average
-    spike = volume_ratio > 2.0
+    spike = bool(volume_ratio > 2.0)
     
     return round(volume_ratio, 2), confirmation, spike

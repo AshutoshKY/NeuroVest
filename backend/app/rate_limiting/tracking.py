@@ -82,7 +82,15 @@ class TrackingUtils:
             return client_ip
         
         # Fallback to direct connection IP
-        client_ip = request.client.host if request.client else "unknown"
+        try:
+            if request.client:
+                client_ip = request.client.host
+            else:
+                client_ip = "unknown"
+        except Exception as e:
+            # Handle rare case where request.client exists but attributes fail
+            client_ip = "unknown"
+            
         logger.info(f"[TRACKING] ✅ Client IP (direct): {client_ip}")
         return client_ip
     

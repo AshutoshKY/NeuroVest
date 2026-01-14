@@ -1,0 +1,55 @@
+name: Deployment (Production)
+
+# Trigger manual or on release
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production # Use GitHub Environments for protection rules
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Deployment Placeholder
+        run: |
+          echo "🚀 Starting Deployment Pipeline..."
+          echo "-----------------------------------"
+          echo "ℹ️  This is a template workflow."
+          echo "ℹ️  To enable real deployment, configure:"
+          echo "   1. SSH Keys or Cloud Credentials (AWS_ACCESS_KEY, etc.) in GitHub Secrets"
+          echo "   2. Uncomment the actual deployment steps below"
+          echo "-----------------------------------"
+          echo "✅ Mock Deployment Successful!"
+
+      # EXAMPLE: SSH Deployment
+      # - name: Deploy via SSH
+      #   uses: appleboy/ssh-action@master
+      #   with:
+      #     host: ${{ secrets.PROD_HOST }}
+      #     username: ${{ secrets.PROD_USERNAME }}
+      #     key: ${{ secrets.PROD_SSH_KEY }}
+      #     script: |
+      #       cd /var/www/neurovest
+      #       git pull origin main
+      #       docker compose up -d --build
+
+      # EXAMPLE: AWS ECS Deployment
+      # - name: Configure AWS credentials
+      #   uses: aws-actions/configure-aws-credentials@v1
+      #   with:
+      #     aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      #     aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      #     aws-region: us-east-1
+      #
+      # - name: Deploy to ECS
+      #   run: aws ecs update-service --cluster neurovest-prod --service api --force-new-deployment

@@ -265,5 +265,13 @@ class EmbeddingService:
             raise
 
 
-# Global instance
-embedding_service = EmbeddingService()
+# Global lazy instance
+_embedding_service_instance = None
+
+def get_embedding_service():
+    """Get or create global EmbeddingService instance."""
+    global _embedding_service_instance
+    if _embedding_service_instance is None:
+        _embedding_service_instance = EmbeddingService()
+    return _embedding_service_instance
+

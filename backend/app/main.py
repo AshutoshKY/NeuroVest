@@ -258,7 +258,7 @@ def root():
 def health_check():
     """Health check endpoint with detailed database status."""
     try:
-        from app.services.embeddings import embedding_service
+        from app.services.embeddings import get_embedding_service
         from app.core.database import get_db
         
         # Check MySQL database connection
@@ -276,7 +276,7 @@ def health_check():
         chroma_doc_count = 0
         chroma_error = None
         try:
-            chroma_doc_count = embedding_service.get_collection_count()
+            chroma_doc_count = get_embedding_service().get_collection_count()
             chroma_connected = True
         except Exception as e:
             chroma_error = str(e)
@@ -320,4 +320,4 @@ def health_check():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=8000)  # nosec

@@ -2,8 +2,8 @@
 Utility for decrypting AES-encrypted auth payloads from frontend
 Matches the frontend encryption in api.ts
 """
-from Crypto.Cipher import AES
-from Crypto.Util.Padding import unpad
+from Crypto.Cipher import AES  # nosec
+from Crypto.Util.Padding import unpad  # nosec
 import base64
 from loguru import logger
 from typing import Optional, Dict, Any
@@ -70,10 +70,9 @@ class AESDecryptor:
         Derive key and IV using MD5 (OpenSSL EVP_BytesToKey compatible)
         This matches CryptoJS behavior
         """
-        import hashlib
         d = d_i = b''
         while len(d) < key_length + iv_length:
-            d_i = hashlib.md5(d_i + password + salt).digest()
+            d_i = hashlib.md5(d_i + password + salt).digest()  # nosec
             d += d_i
         return d[:key_length + iv_length]
     

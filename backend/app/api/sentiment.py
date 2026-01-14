@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 from typing import Dict, Any, List
 from app.services.sentiment import sentiment_service
-from app.services.embeddings import embedding_service
+from app.services.embeddings import get_embedding_service
 
 router = APIRouter(prefix="/sentiment", tags=["sentiment"])
 
@@ -42,7 +42,7 @@ def get_ticker_sentiment(ticker: str):
     """
     try:
         # Retrieve recent news for ticker
-        search_results = embedding_service.query_similar(
+        search_results = get_embedding_service().query_similar(
             query_text=f"news about {ticker} stock",
             n_results=5,
             filter_metadata={"ticker": ticker}
@@ -100,7 +100,7 @@ def get_sector_sentiment(sector: str):
     """
     try:
         # Retrieve recent news for sector
-        search_results = embedding_service.query_similar(
+        search_results = get_embedding_service().query_similar(
             query_text=f"{sector} sector news",
             n_results=20
         )

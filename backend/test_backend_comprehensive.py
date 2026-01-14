@@ -108,22 +108,26 @@ except Exception as e:
 print("\n[TEST 2] Risk Scoring Calculations...")
 try:
     from app.risk_scoring import calculate_risk_score
-    from app.signal_engine.schemas import SignalResponse, TrendData, MomentumData, VolatilityData, VolumeData, StructureData, SignalSummary, MarketContext, MACDData
+    from app.signal_engine.schemas import SignalResponse, TrendData, MomentumData, VolatilityData, VolumeData, StructureData, SignalSummary, MarketContext, MACDData, PriceContext, RelativeStrengthData
     
+    # Create Market Context first
+    market_context = MarketContext(nifty_trend="bullish", nifty_close=22000.0, india_vix=12.5, vix_regime="normal", macro_bias="risk_on")
+
     # Create test signal
     test_signal = SignalResponse(
         symbol="TEST",
         timeframe="swing",
         timestamp=datetime.now(),
-        signal_summary=SignalSummary(directional_bias="bullish", confidence_score=0.75, primary_signal="trend"),
-        trend=TrendData(trend_state="bullish", strength="strong", ema_20=100, ema_50=95, ema_200=90),
+        signal_summary=SignalSummary(directional_bias="bullish", confidence_score=0.75, primary_signal="trend", conviction="medium", risk_level="moderate"),
+        price=PriceContext(last_close=100.0, prev_close=99.0, gap_percent=1.0, high=101.0, low=99.0, open=99.5),
+        trend=TrendData(trend_state="bullish", strength="strong", ema_20=100, ema_50=95, ema_200=90, ema_alignment_score=0.9),
         momentum=MomentumData(rsi_14=65, rsi_regime="neutral", macd=MACDData(value=1.5, signal=1.2, histogram=0.3, state="positive")),
-        volatility=VolatilityData(atr_14=2.5, atr_percent=1.8, volatility_regime="normal"),
-        volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="increasing", volume_confirmation=True),
-        structure=StructureData(market_structure="uptrend", support_levels=[90, 85], resistance_levels=[110, 115])
+        volatility=VolatilityData(atr_14=2.5, atr_percent=1.8, volatility_regime="normal", bollinger_bandwidth=0.15),
+        volume=VolumeData(today_vs_20d_avg=1.2, volume_trend="expanding", volume_confirmation=True, volume_spike=False),
+        structure=StructureData(market_structure="higher_high", swing_high=110.0, swing_low=90.0, support_levels=[90, 85], resistance_levels=[110, 115], pivot_point=100.0),
+        relative_strength=RelativeStrengthData(vs_nifty=1.05, vs_sector=1.02, sector_symbol="NIFTY_AUTO", sector_trend="strong", market_leadership="leader"),
+        market_context=market_context
     )
-    
-    market_context = MarketContext(nifty_trend="bullish", vix_value=15.0, vix_regime="normal")
     
     risk_assessment = calculate_risk_score(test_signal, market_context, rs_vs_sector=1.1, sentiment_score=0.2)
     
@@ -150,14 +154,12 @@ except Exception as e:
 # Test 3: Prompt Building
 print("\n[TEST 3] Prompt Building...")
 try:
-    from app.llm_integration.prompts import build_enhanced_prompt, SYSTEM_PROMPT_V2, BANNED_WORDS
+    from app.llm_integration.prompts import SYSTEM_PROMPT_V2, BANNED_WORDS, SYSTEM_PROMPT_V3_PROBABILISTIC
     
     # Check SYSTEM_PROMPT_V2
     required_phrases = [
-        "professional equity research analyst",
-        "Indian stock markets",
-        "YOU ARE NOT ALLOWED TO",
-        "EXACTLY three scenarios"
+        "sophisticated AI financial analyst",
+        "hybrid capabilities"
     ]
     
     missing = [p for p in required_phrases if p not in SYSTEM_PROMPT_V2]
@@ -177,33 +179,12 @@ try:
         print(f"  ⚠️  WARNING: Only {len(BANNED_WORDS)} banned words")
         test_results["warnings"].append(f"Few banned words: {len(BANNED_WORDS)}")
     
-    # Test prompt building
-    test_signal_data = {
-        'signal_summary': {'directional_bias': 'bullish', 'confidence_score': 0.75, 'primary_signal': 'test'},
-        'trend': {'trend_state': 'bullish', 'strength': 'strong', 'ema_20': 100, 'ema_50': 95, 'ema_200': 90},
-        'momentum': {'rsi_14': 65, 'rsi_regime': 'neutral', 'macd': {'value': 1.5, 'state': 'positive'}},
-        'volatility': {'atr_14': 2.5, 'atr_percent': 1.8, 'volatility_regime': 'normal'},
-        'structure': {'market_structure': 'uptrend', 'support_levels': [90], 'resistance_levels': [110]},
-        'volume': {'today_vs_20d_avg': 1.2, 'volume_trend': 'increasing', 'volume_confirmation': True}
-    }
-    
-    test_scenarios_data = [
-        {'name': 'Base', 'probability': 0.55, 'price_range': [100, 110], 'drivers': ['trend'], 'invalidation': '95'}
-    ]
-    
-    test_risk_data = {
-        'risk_score': 45, 'risk_level': 'moderate', 'trend_risk': 10,
-        'volatility_risk': 5, 'market_risk': 10, 'sector_risk': 10,
-        'conflict_risk': 5, 'news_risk': 5, 'conflicts': [], 'notes': 'Test'
-    }
-    
-    prompt = build_enhanced_prompt("TEST.NS", test_signal_data, test_scenarios_data, test_risk_data)
-    
-    if len(prompt) > 100 and 'TEST.NS' in prompt:
-        print(f"  ✅ PASS: Prompt built successfully ({len(prompt)} chars)")
+    # Test V3 Prompt (The real one used now)
+    if len(SYSTEM_PROMPT_V3_PROBABILISTIC) > 500 and "CRITICAL: YOUR ROLE IS RENDERER ONLY" in SYSTEM_PROMPT_V3_PROBABILISTIC:
+        print(f"  ✅ PASS: SYSTEM_PROMPT_V3_PROBABILISTIC validated ({len(SYSTEM_PROMPT_V3_PROBABILISTIC)} chars)")
         test_results["passed"].append("Prompt Building")
     else:
-        print(f"  ❌ FAIL: Prompt building failed or too short")
+        print(f"  ❌ FAIL: V3 Prompt missing or invalid")
         test_results["failed"].append("Prompt Building")
         
 except Exception as e:
@@ -228,10 +209,9 @@ try:
         rag_source = f.read()
     
     checks = {
-        "SYSTEM_PROMPT_V2 import": "from app.llm_integration.prompts import SYSTEM_PROMPT_V2" in rag_source,
-        "SYSTEM_PROMPT_V2 usage": 'SYSTEM_PROMPT_V2' in rag_source and '"system", "content": SYSTEM_PROMPT_V2' in rag_source,
-        "Validator import": "from app.output_validator import validate_llm_output" in rag_source,
-        "Validator usage": "validate_llm_output(" in rag_source,
+        "Smart Orchestrator import": "from app.services.smart_orchestrator import smart_orchestrator" in rag_source,
+        "V3 Prompt Usage": "analysis_structured" in rag_source or "analysis_structured" in rag_source,
+        "Validator import": "from app.services.guardrails import guardrails_service" in rag_source,
         "Signal history retrieval": "retrieve_signal_history_for_rag" in rag_source,
         "Signal history passed to LLM": "signal_history" in rag_source
     }

@@ -9,7 +9,7 @@ from pathlib import Path
 from app.core.config import settings
 from app.scrapers.scraper_factory import load_scrapers
 from app.services.preprocessing import preprocessing_service
-from app.services.embeddings import embedding_service
+from app.services.embeddings import get_embedding_service
 from app.services.stock_api_service import stock_api_service
 from app.services.smart_orchestrator import smart_orchestrator  # Smart API orchestration
 
@@ -514,7 +514,7 @@ class DataIngestionService:
             
             # Add to vector database
             if documents:
-                embedding_service.add_documents(documents, metadatas, ids)
+                get_embedding_service().add_documents(documents, metadatas, ids)
                 chunks_stored = len(documents)
                 
                 duration_ms = int((time.time() - start_time) * 1000)
@@ -587,7 +587,7 @@ class DataIngestionService:
                     )
             
             # Get final stats
-            total_docs = embedding_service.get_collection_count()
+            total_docs = get_embedding_service().get_collection_count()
             
             report.complete()
             
