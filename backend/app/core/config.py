@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     MYSQL_DATABASE: str = "stockmarket_db"
     
     # OpenAI Configuration (Azure GPT-4o for analysis)
-    AZURE_OPENAI_API_KEY: str = "AZURE_KEY_REMOVED"
+    AZURE_OPENAI_API_KEY: str  # Required: set via environment variable
     AZURE_OPENAI_ENDPOINT: str = "https://unstructured-docinfo-extraction.openai.azure.com"
     AZURE_OPENAI_DEPLOYMENT: str = "KYC-DocInfo-GPT4o"
     AZURE_OPENAI_API_VERSION: str = "2023-07-01-preview"
