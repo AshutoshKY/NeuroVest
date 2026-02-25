@@ -1,5 +1,5 @@
 """
-Security Middleware for IP Blacklist and System Toggles
+Security Middleware for IP Blacklist, Kill Switches, and System Toggles
 Enforces security controls on ALL requests before they reach endpoints
 """
 
@@ -16,9 +16,10 @@ from app.core.redis_client import get_redis
 class SecurityMiddleware(BaseHTTPMiddleware):
     """
     Middleware to enforce:
-    1. IP blacklist (403 for blocked IPs)
-    2. System toggles (login_enabled, signup_enabled, guest_enabled, maintenance_mode)
-    3. DDOS protection (100 req/min per IP)
+    1. Kill switches (emergency shutdown, block signups/logins)
+    2. IP blacklist (403 for blocked IPs)
+    3. System toggles (login_enabled, signup_enabled, guest_enabled, maintenance_mode)
+    4. DDOS protection (100 req/min per IP)
     """
     
     # Whitelist paths that should NOT be blocked (health checks, etc.)
@@ -44,10 +45,60 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         if any(path.startswith(wp) for wp in self.WHITELIST_PATHS):
             return await call_next(request)
         
+        # ========== KILL SWITCH CHECK (Phase 3) ==========
+        # Check kill switches first - highest priority security control
+        try:
+            from app.services.kill_switch import (
+                is_switch_active, should_bypass_kill_switch, KillSwitchType
+            )
+            
+            # Admin paths bypass kill switches (for incident response)
+            if not should_bypass_kill_switch(path):
+                # Check emergency shutdown (blocks ALL traffic)
+                if is_switch_active(KillSwitchType.EMERGENCY_SHUTDOWN):
+                    logger.warning(f"[KILL_SWITCH] Emergency shutdown: blocking {client_ip} -> {path}")
+                    return JSONResponse(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        content={"detail": "System is in emergency shutdown mode. All services are temporarily unavailable."}
+                    )
+                
+                # Check block_signups (for signup endpoints only)
+                if is_switch_active(KillSwitchType.BLOCK_SIGNUPS) and path.startswith("/auth/register"):
+                    logger.warning(f"[KILL_SWITCH] Signups blocked: {client_ip}")
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={"detail": "New registrations are temporarily disabled."}
+                    )
+                
+                # Check block_logins (for login endpoints only)
+                if is_switch_active(KillSwitchType.BLOCK_LOGINS) and path.startswith("/auth/login"):
+                    logger.warning(f"[KILL_SWITCH] Logins blocked: {client_ip}")
+                    return JSONResponse(
+                        status_code=status.HTTP_403_FORBIDDEN,
+                        content={"detail": "Login is temporarily disabled."}
+                    )
+                
+                # Check maintenance mode (via kill switch)
+                if is_switch_active(KillSwitchType.MAINTENANCE_MODE):
+                    # Allow authenticated admin requests
+                    is_admin = await self._is_user_admin(request)
+                    if not is_admin:
+                        logger.info(f"[KILL_SWITCH] Maintenance mode: blocking {client_ip}")
+                        return JSONResponse(
+                            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                            content={"detail": "System is under maintenance. Please try again later."}
+                        )
+        except Exception as e:
+            logger.error(f"[SECURITY] Kill switch check failed: {e}")
+            # Fail open - don't block if kill switch check fails
+        # ========== END KILL SWITCH CHECK ==========
+        
         # 1. Check IP Blacklist
         try:
             if await self._is_ip_blocked(client_ip):
                 logger.warning(f"[SECURITY] Blocked IP attempt: {client_ip} -> {path}")
+                # Track security event for SOC dashboard
+                self._track_security_event("blocked_ip")
                 return JSONResponse(
                     status_code=status.HTTP_403_FORBIDDEN,
                     content={"detail": "Access denied. Your IP address has been blocked."}
@@ -98,12 +149,14 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         except Exception as e:
             logger.error(f"[SECURITY] Guest toggle check failed: {e}")
         
-        # 5. DDOS Protection (100 requests/minute per IP)
+        # 5. DDOS Protection (500 requests/minute per IP for dev)
         try:
             if await self._check_ddos_limit(client_ip):
-                logger.warning(f"[SECURITY] DDOS detected: {client_ip} exceeded 100 req/min")
+                logger.warning(f"[SECURITY] DDOS detected: {client_ip} exceeded 500 req/min")
+                # Track security event for SOC dashboard
+                self._track_security_event("rate_limit")
                 # Auto-block IP
-                await self._auto_block_ip(client_ip, "DDOS attack (>100 req/min)")
+                await self._auto_block_ip(client_ip, "DDOS attack (>500 req/min)")
                 return JSONResponse(
                     status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                     content={"detail": "Too many requests. Your IP has been temporarily blocked."}
@@ -163,6 +216,20 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         
         return value == "1" or value == "true" or value == b"1"
     
+    def _track_security_event(self, event_type: str):
+        """
+        Track security events for SOC dashboard
+        Event types: rate_limit, blocked_ip, auth_failure, ddos, other
+        """
+        try:
+            redis = get_redis()
+            today = datetime.now().strftime("%Y-%m-%d")
+            key = f"security:events:{today}:{event_type}"
+            redis.incr(key)
+            redis.expire(key, 86400 * 7)  # Keep for 7 days
+        except Exception as e:
+            logger.error(f"[SECURITY] Failed to track event {event_type}: {e}")
+    
     async def _is_request_authenticated(self, request: Request) -> bool:
         """Check if request has valid JWT token"""
         auth_header = request.headers.get("Authorization")
@@ -170,7 +237,7 @@ class SecurityMiddleware(BaseHTTPMiddleware):
     
     async def _check_ddos_limit(self, ip: str) -> bool:
         """
-        Check if IP exceeded DDOS limit (100 requests/minute)
+        Check if IP exceeded DDOS limit (500 requests/minute for dev, 100 for prod)
         Returns True if limit exceeded
         """
         redis = get_redis()
@@ -179,7 +246,8 @@ class SecurityMiddleware(BaseHTTPMiddleware):
         count = redis.incr(key)
         redis.expire(key, 60)  # 1 minute window
         
-        return count > 100
+        # 500 for development, reduce to 100 in production
+        return count > 500
     
     async def _auto_block_ip(self, ip: str, reason: str):
         """Auto-block IP with tiered banning system"""

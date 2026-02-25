@@ -1,6 +1,10 @@
 """
 Admin Management API
 Handles user management, IP blacklist, system toggles, and audit logs
+
+RBAC Rules:
+- ADMIN: Can view users, IPs, toggles, audit logs (read-only)
+- SUPER_ADMIN: Can modify users, IPs, toggles (mutations)
 """
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
@@ -12,9 +16,11 @@ from datetime import datetime
 import logging
 
 from app.core.database import get_db
-from app.middleware.auth_middleware import get_current_user
+from app.core.rbac import require_admin, require_super_admin
 from app.models.user import User
 from app.core.redis_client import get_redis
+from app.services.audit_service import AuditService, get_audit_service
+from app.models.audit_log import AuditAction, ActionCategory
 
 logger = logging.getLogger(__name__)
 
@@ -36,44 +42,8 @@ class SystemToggleRequest(BaseModel):
     enabled: bool
 
 
-# ==================== HELPER: CHECK ADMIN ====================
-
-def check_admin(current_user: User):
-    """Check if user is admin, raise 403 if not"""
-    if current_user.role != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required"
-        )
-
-
-async def log_admin_action(
-    db: Session,
-    admin_user_id: int,
-    action: str,
-    target: str,
-    changes_json: str,
-    ip_address: str
-):
-    """Log admin action to audit_logs"""
-    try:
-        db.execute(
-            text("""
-                INSERT INTO admin_audit_logs 
-                (admin_user_id, action, target, changes_json, ip_address, timestamp)
-                VALUES (:admin_id, :action, :target, :changes, :ip, NOW())
-            """),
-            {
-                "admin_id": admin_user_id,
-                "action": action,
-                "target": target,
-                "changes": changes_json,
-                "ip": ip_address
-            }
-        )
-        db.commit()
-    except Exception as e:
-        logger.error(f"Failed to log admin action: {e}")
+# ==================== LEGACY HELPER (DEPRECATED - USE RBAC) ====================
+# The check_admin function is deprecated. Use require_admin or require_super_admin instead.
 
 
 # ==================== USER MANAGEMENT ====================
@@ -82,11 +52,11 @@ async def log_admin_action(
 async def list_users(
     page: int = 1,
     limit: int = 20,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),  # ADMIN or SUPER_ADMIN can view
     db: Session = Depends(get_db)
 ):
-    """List all users (paginated)"""
-    check_admin(current_user)
+    """List all users (paginated) - Read Only"""
+    
     
     try:
         offset = (page - 1) * limit
@@ -132,12 +102,12 @@ async def list_users(
 @router.post("/users/disable")
 async def disable_user(
     request: DisableUserRequest,
-    current_user: User = Depends(get_current_user),
-    http_request: Request = None,
+    http_request: Request,
+    current_user: User = Depends(require_super_admin),  # SUPER_ADMIN only
     db: Session = Depends(get_db)
 ):
-    """Disable user account"""
-    check_admin(current_user)
+    """Disable user account - Requires SUPER_ADMIN"""
+    
     
     try:
         # Don't allow self-disable
@@ -150,14 +120,16 @@ async def disable_user(
         )
         db.commit()
         
-        # Log action
-        await log_admin_action(
-            db,
-            current_user.id,
-            "disable_user",
-            f"user_id:{request.user_id}",
-            f'{{"reason": "{request.reason}"}}',
-            http_request.client.host if http_request else "unknown"
+        # Log action using new AuditService
+        AuditService.log_action(
+            db=db,
+            actor=current_user,
+            action=AuditAction.DISABLE_USER,
+            request=http_request,
+            action_category=ActionCategory.USER_MANAGEMENT,
+            target_type="user",
+            target_id=str(request.user_id),
+            changes={"reason": request.reason}
         )
         
         logger.info(f"Admin {current_user.id} disabled user {request.user_id}")
@@ -175,12 +147,12 @@ async def disable_user(
 @router.post("/users/enable")
 async def enable_user(
     user_id: int,
-    current_user: User = Depends(get_current_user),
-    http_request: Request = None,
+    http_request: Request,
+    current_user: User = Depends(require_super_admin),  # SUPER_ADMIN only
     db: Session = Depends(get_db)
 ):
-    """Enable user account"""
-    check_admin(current_user)
+    """Enable user account - Requires SUPER_ADMIN"""
+    
     
     try:
         db.execute(
@@ -189,14 +161,15 @@ async def enable_user(
         )
         db.commit()
         
-        # Log action
-        await log_admin_action(
-            db,
-            current_user.id,
-            "enable_user",
-            f"user_id:{user_id}",
-            "{}",
-            http_request.client.host if http_request else "unknown"
+        # Log action using new AuditService
+        AuditService.log_action(
+            db=db,
+            actor=current_user,
+            action=AuditAction.ENABLE_USER,
+            request=http_request,
+            action_category=ActionCategory.USER_MANAGEMENT,
+            target_type="user",
+            target_id=str(user_id)
         )
         
         logger.info(f"Admin {current_user.id} enabled user {user_id}")
@@ -213,11 +186,11 @@ async def enable_user(
 
 @router.get("/ip-blacklist")
 async def list_blacklisted_ips(
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),  # ADMIN or SUPER_ADMIN can view
     db: Session = Depends(get_db)
 ):
-    """List all blacklisted IPs"""
-    check_admin(current_user)
+    """List all blacklisted IPs - Read Only"""
+    
     
     try:
         result = db.execute(
@@ -249,12 +222,12 @@ async def list_blacklisted_ips(
 @router.post("/ip-blacklist/add")
 async def add_ip_to_blacklist(
     request: BlacklistIPRequest,
-    current_user: User = Depends(get_current_user),
-    http_request: Request = None,
+    http_request: Request,
+    current_user: User = Depends(require_super_admin),  # SUPER_ADMIN only
     db: Session = Depends(get_db)
 ):
-    """Add IP to blacklist"""
-    check_admin(current_user)
+    """Add IP to blacklist - Requires SUPER_ADMIN"""
+    
     
     try:
         db.execute(
@@ -275,14 +248,16 @@ async def add_ip_to_blacklist(
         )
         db.commit()
         
-        # Log action
-        await log_admin_action(
-            db,
-            current_user.id,
-            "blacklist_ip",
-            request.ip_address,
-            f'{{"reason": "{request.reason}"}}',
-            http_request.client.host if http_request else "unknown"
+        # Log action using new AuditService
+        AuditService.log_action(
+            db=db,
+            actor=current_user,
+            action=AuditAction.BLACKLIST_IP,
+            request=http_request,
+            action_category=ActionCategory.SECURITY,
+            target_type="ip",
+            target_id=request.ip_address,
+            changes={"reason": request.reason}
         )
         
         logger.info(f"Admin {current_user.id} blacklisted IP {request.ip_address}")
@@ -298,12 +273,12 @@ async def add_ip_to_blacklist(
 @router.delete("/ip-blacklist/{ip_address}")
 async def remove_ip_from_blacklist(
     ip_address: str,
-    current_user: User = Depends(get_current_user),
-    http_request: Request = None,
+    http_request: Request,
+    current_user: User = Depends(require_super_admin),  # SUPER_ADMIN only
     db: Session = Depends(get_db)
 ):
-    """Remove IP from blacklist"""
-    check_admin(current_user)
+    """Remove IP from blacklist - Requires SUPER_ADMIN"""
+    
     
     try:
         db.execute(
@@ -312,14 +287,15 @@ async def remove_ip_from_blacklist(
         )
         db.commit()
         
-        # Log action
-        await log_admin_action(
-            db,
-            current_user.id,
-            "unblock_ip",
-            ip_address,
-            "{}",
-            http_request.client.host if http_request else "unknown"
+        # Log action using new AuditService
+        AuditService.log_action(
+            db=db,
+            actor=current_user,
+            action=AuditAction.UNBLOCK_IP,
+            request=http_request,
+            action_category=ActionCategory.SECURITY,
+            target_type="ip",
+            target_id=ip_address
         )
         
         logger.info(f"Admin {current_user.id} unblocked IP {ip_address}")
@@ -336,10 +312,10 @@ async def remove_ip_from_blacklist(
 
 @router.get("/system-toggles")
 async def get_system_toggles(
-    current_user: User = Depends(get_current_user)
+    current_user: User = Depends(require_admin)  # ADMIN or SUPER_ADMIN can view
 ):
-    """Get all system toggles"""
-    check_admin(current_user)
+    """Get all system toggles - Read Only"""
+    
     
     try:
         redis = get_redis()
@@ -361,12 +337,12 @@ async def get_system_toggles(
 @router.post("/system-toggles")
 async def set_system_toggle(
     request: SystemToggleRequest,
-    current_user: User = Depends(get_current_user),
-    http_request: Request = None,
+    http_request: Request,
+    current_user: User = Depends(require_super_admin),  # SUPER_ADMIN only
     db: Session = Depends(get_db)
 ):
-    """Set system toggle"""
-    check_admin(current_user)
+    """Set system toggle - Requires SUPER_ADMIN"""
+    
     
     try:
         redis = get_redis()
@@ -381,14 +357,16 @@ async def set_system_toggle(
         
         redis.set(key, value)
         
-        # Log action
-        await log_admin_action(
-            db,
-            current_user.id,
-            "set_system_toggle",
-            request.toggle_name,
-            f'{{"enabled": {str(request.enabled).lower()}}}',
-            http_request.client.host if http_request else "unknown"
+        # Log action using new AuditService
+        AuditService.log_action(
+            db=db,
+            actor=current_user,
+            action=AuditAction.MODIFY_TOGGLE,
+            request=http_request,
+            action_category=ActionCategory.CONFIG,
+            target_type="toggle",
+            target_id=request.toggle_name,
+            changes={"enabled": request.enabled}
         )
         
         logger.info(f"Admin {current_user.id} set {request.toggle_name} to {request.enabled}")
@@ -407,20 +385,21 @@ async def set_system_toggle(
 @router.get("/audit-logs")
 async def get_audit_logs(
     limit: int = 50,
-    current_user: User = Depends(get_current_user),
+    current_user: User = Depends(require_admin),  # ADMIN or SUPER_ADMIN can view
     db: Session = Depends(get_db)
 ):
-    """Get audit logs"""
-    check_admin(current_user)
+    """Get audit logs - Read Only"""
+    
     
     try:
+        # Query from new enhanced audit_logs table (with fallback to old table)
         result = db.execute(
             text("""
-                SELECT a.id, a.admin_user_id, u.email, a.action, a.target, a.changes_json, 
-                       a.ip_address, a.timestamp
-                FROM admin_audit_logs a
-                LEFT JOIN users u ON a.admin_user_id = u.id
-                ORDER BY a.timestamp DESC
+                SELECT a.id, a.actor_id, a.actor_email, a.actor_role, a.action, 
+                       a.action_category, a.target_type, a.target_id, a.changes_json, 
+                       a.ip_address, a.success, a.created_at
+                FROM audit_logs a
+                ORDER BY a.created_at DESC
                 LIMIT :limit
             """),
             {"limit": limit}
@@ -430,13 +409,17 @@ async def get_audit_logs(
         for row in result:
             logs.append({
                 "id": row[0],
-                "admin_user_id": row[1],
-                "admin_email": row[2],
-                "action": row[3],
-                "target": row[4],
-                "changes": row[5],
-                "ip_address": row[6],
-                "timestamp": str(row[7])
+                "actor_id": row[1],
+                "actor_email": row[2],
+                "actor_role": row[3],
+                "action": row[4],
+                "action_category": row[5],
+                "target_type": row[6],
+                "target_id": row[7],
+                "changes": row[8],
+                "ip_address": row[9],
+                "success": bool(row[10]),
+                "timestamp": str(row[11])
             })
         
         return {"logs": logs, "count": len(logs)}

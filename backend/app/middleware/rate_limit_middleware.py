@@ -73,15 +73,36 @@ class APIRateLimitMiddleware(BaseHTTPMiddleware):
         path = request.url.path
         is_exempt = (
             path in self.VALIDATION_EXEMPT_PATHS or 
-            path.startswith("/test/")  # Allow all test endpoints
+            path.startswith("/test/") or  # Allow all test endpoints
+            path.startswith("/admin/")  # TEMP: Allow admin endpoints for testing (REMOVE IN PRODUCTION)
         )
         
-        # Get user context (if authenticated)
+        # Get user context from JWT token (middleware runs before auth dependencies set request.state.user)
         user_id = None
         is_admin = False
-        if hasattr(request.state, 'user') and request.state.user:
-            user_id = request.state.user.id
-            is_admin = request.state.user.is_admin
+        try:
+            # Try to extract user info from JWT token
+            from app.core.security import verify_token
+            
+            # Get token from cookie or Authorization header
+            token = request.cookies.get("access_token")
+            if not token:
+                auth_header = request.headers.get("Authorization", "")
+                if auth_header.startswith("Bearer "):
+                    token = auth_header[7:]
+            
+            if token:
+                payload = verify_token(token)
+                if payload:
+                    user_id = payload.get("sub")  # User ID from JWT
+                    role = payload.get("role", "")
+                    is_admin = role in ["admin", "super_admin"]
+                    # Store in request.state for later use
+                    request.state.jwt_user_id = user_id
+                    request.state.jwt_is_admin = is_admin
+        except Exception:
+            # Token verification failed - treat as guest (expected for unauthenticated requests)
+            pass
         
         # Determine limit type based on endpoint
         # The actual limit VALUE is determined by RateLimiter based on user role

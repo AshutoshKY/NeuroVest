@@ -45,3 +45,9 @@ logs/
 # ChromaDB
 data/chroma_db/*
 !data/chroma_db/.gitkeep
+
+# Cryptographic keys
+*.pem
+*.key
+*.crt
+backend/keys/

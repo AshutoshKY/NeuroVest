@@ -5,9 +5,11 @@ import aiohttp
 import asyncio
 import logging
 import os
+import time
 from typing import Dict, Any, Optional, List
 from datetime import datetime, timedelta
 from app.scrapers.scraper_factory import load_api_configs
+from app.services.external_api_metrics import ExternalAPIMetricsService
 
 logger = logging.getLogger(__name__)
 
@@ -162,9 +164,11 @@ class StockAPIService:
     
     async def _fetch_finnhub(self, api: Dict, ticker: str) -> Optional[Dict]:
         """Fetch from Finnhub API."""
+        start_time = time.time()
         api_key = os.getenv(api['api_key_env'])
         if not api_key:
             logger.error(f"API key not found: {api['api_key_env']}")
+            ExternalAPIMetricsService.record_call("finnhub", False, 0, "API key not found")
             return None
         
         base_url = api['base_url']
@@ -192,6 +196,8 @@ class StockAPIService:
                         logger.warning(f"Finnhub returned 0 price for {search_ticker}")
                         return None
                     
+                    latency = (time.time() - start_time) * 1000
+                    ExternalAPIMetricsService.record_call("finnhub", True, latency, ticker=ticker)
                     return {
                         'ticker': ticker,
                         'exchange': 'NSE',
@@ -205,13 +211,17 @@ class StockAPIService:
                         'provider': 'Finnhub'
                     }
                 else:
+                    latency = (time.time() - start_time) * 1000
+                    ExternalAPIMetricsService.record_call("finnhub", False, latency, f"HTTP {response.status}")
                     logger.error(f"Finnhub error: {response.status}")
                     return None
     
     async def _fetch_alpha_vantage(self, api: Dict, ticker: str) -> Optional[Dict]:
         """Fetch from Alpha Vantage API."""
+        start_time = time.time()
         api_key = os.getenv(api['api_key_env'])
         if not api_key:
+            ExternalAPIMetricsService.record_call("alpha_vantage", False, 0, "API key not found")
             return None
         
         url = api['base_url']
@@ -228,8 +238,12 @@ class StockAPIService:
                     quote = data.get('Global Quote', {})
                     
                     if not quote:
+                        latency = (time.time() - start_time) * 1000
+                        ExternalAPIMetricsService.record_call("alpha_vantage", False, latency, "No quote data")
                         return None
                     
+                    latency = (time.time() - start_time) * 1000
+                    ExternalAPIMetricsService.record_call("alpha_vantage", True, latency, ticker=ticker)
                     return {
                         'ticker': ticker,
                         'exchange': 'BSE',
@@ -242,12 +256,16 @@ class StockAPIService:
                         'provider': 'Alpha Vantage'
                     }
                 else:
+                    latency = (time.time() - start_time) * 1000
+                    ExternalAPIMetricsService.record_call("alpha_vantage", False, latency, f"HTTP {response.status}")
                     return None
     
     async def _fetch_marketstack(self, api: Dict, ticker: str) -> Optional[Dict]:
         """Fetch from Marketstack API."""
+        start_time = time.time()
         api_key = os.getenv(api['api_key_env'])
         if not api_key:
+            ExternalAPIMetricsService.record_call("marketstack", False, 0, "API key not found")
             return None
         
         base_url = api['base_url']
@@ -261,13 +279,16 @@ class StockAPIService:
         
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, timeout=api['timeout_seconds']) as response:
+                latency = (time.time() - start_time) * 1000
                 if response.status == 200:
                     data = await response.json()
                     
                     if not data.get('data'):
+                        ExternalAPIMetricsService.record_call("marketstack", False, latency, "No data")
                         return None
                     
                     latest = data['data'][0]
+                    ExternalAPIMetricsService.record_call("marketstack", True, latency, ticker=ticker)
                     
                     return {
                         'ticker': ticker,
@@ -281,10 +302,12 @@ class StockAPIService:
                         'provider': 'Marketstack'
                     }
                 else:
+                    ExternalAPIMetricsService.record_call("marketstack", False, latency, f"HTTP {response.status}")
                     return None
     
     async def _fetch_yahoo(self, api: Dict, ticker: str) -> Optional[Dict]:
         """Fetch from Yahoo Finance API (fallback)."""
+        start_time = time.time()
         yahoo_ticker = f"{ticker}.NS"
         url = f"{api['base_url']}/{yahoo_ticker}"
         params = {
@@ -294,14 +317,17 @@ class StockAPIService:
         
         async with aiohttp.ClientSession() as session:
             async with session.get(url, params=params, timeout=api['timeout_seconds']) as response:
+                latency = (time.time() - start_time) * 1000
                 if response.status == 200:
                     data = await response.json()
                     
                     if 'chart' not in data or 'result' not in data['chart']:
+                        ExternalAPIMetricsService.record_call("yahoo_finance", False, latency, "Invalid response")
                         return None
                     
                     result = data['chart']['result'][0]
                     meta = result.get('meta', {})
+                    ExternalAPIMetricsService.record_call("yahoo_finance", True, latency, ticker=ticker)
                     
                     return {
                         'ticker': ticker,
@@ -315,6 +341,7 @@ class StockAPIService:
                         'provider': 'Yahoo Finance'
                     }
                 else:
+                    ExternalAPIMetricsService.record_call("yahoo_finance", False, latency, f"HTTP {response.status}")
                     return None
     
     async def get_company_news(self, ticker: str, days_back: int = 7) -> List[Dict]:
@@ -348,12 +375,20 @@ class StockAPIService:
             'token': api_key
         }
         
+        start_time = time.time()
         try:
             async with aiohttp.ClientSession() as session:
                 async with session.get(url, params=params, timeout=10) as response:
+                    latency = (time.time() - start_time) * 1000
                     if response.status == 200:
-                        return await response.json()
+                        news = await response.json()
+                        ExternalAPIMetricsService.record_call("finnhub", True, latency, ticker=ticker)
+                        return news
+                    else:
+                        ExternalAPIMetricsService.record_call("finnhub", False, latency, f"HTTP {response.status}")
         except Exception as e:
+            latency = (time.time() - start_time) * 1000
+            ExternalAPIMetricsService.record_call("finnhub", False, latency, str(e)[:100])
             logger.error(f"Error fetching news from Finnhub: {e}")
         
         return []

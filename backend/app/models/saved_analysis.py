@@ -1,6 +1,5 @@
 """Saved Analysis Model - Allows users to save up to 10 analysis results."""
-from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, Index, UniqueConstraint
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy import Column, String, DateTime, JSON, ForeignKey, Index, UniqueConstraint, CHAR
 from sqlalchemy.sql import func
 import uuid
 from app.core.database import Base
@@ -10,7 +9,7 @@ class SavedAnalysis(Base):
     """Saved stock analysis for users."""
     __tablename__ = "saved_analyses"
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    id = Column(CHAR(36), primary_key=True, default=lambda: str(uuid.uuid4()))
     user_email = Column(String(255), ForeignKey('users.email', ondelete='CASCADE'), nullable=False)
     ticker = Column(String(20), nullable=False)
     title = Column(String(100), nullable=True)  # Optional custom title
